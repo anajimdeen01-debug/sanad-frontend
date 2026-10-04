@@ -1,0 +1,6 @@
+{
+  "name": "Sanad (سند) - Warba Bank Corporate Banking Engine",
+  "description": "AI-Powered Corporate Banking & Shariah Compliance Executive Analytical Command Center for Warba Bank.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
