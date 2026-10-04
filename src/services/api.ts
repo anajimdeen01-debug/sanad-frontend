@@ -412,7 +412,16 @@ class SanadApiService {
     let isConditional = false;
     let forcedScore: number | undefined = undefined;
 
-    if (allNames.includes('manar') || allNames.includes('am-1005') || allNames.includes('al-manar')) {
+    if (allNames.includes('qabas') || allNames.includes('qd-1008') || allNames.includes('contracting')) {
+      bizName = 'Qabas Trading & Contracting K.S.C.C.';
+      bizNameArabic = 'شركة قبس للتجارة والمقاولات ش.م.ك.م';
+      sector = 'General Contracting & Commercial Sub-Leasing';
+      cr = '1149204-KW';
+      fac = 3500000;
+      col = 5000000;
+      isFlagged = true;
+      forcedScore = 38;
+    } else if (allNames.includes('manar') || allNames.includes('am-1005') || allNames.includes('al-manar')) {
       bizName = 'Al-Manar Industrial & Logistics K.S.C.C.';
       bizNameArabic = 'شركة المنار للصناعات والخدمات اللوجستية';
       sector = 'Industrial Manufacturing & Logistics';
@@ -648,15 +657,16 @@ class SanadApiService {
     const hash = await sha256(`${biz.id}-${fac}-${col}-${Date.now()}`);
     const merkle = await sha256(`merkle-${hash}`);
 
-    const baseRevenue = biz.id === 'biz_manar' || forcedScore === 64 ? 14200000 : fac * 6.32;
-    const ebitda = biz.id === 'biz_manar' || forcedScore === 64 ? 3436400 : baseRevenue * 0.242;
-    const annualDebtService = biz.id === 'biz_manar' || forcedScore === 64 ? 1402612 : fac * 0.168;
-    const dscr = biz.id === 'biz_manar' || forcedScore === 64 ? 2.45 : Number((ebitda / annualDebtService).toFixed(2));
-
-    const score = forcedScore ?? (hasMortgageFlag ? 58 : dscr >= 1.5 ? 94 : 78);
-    const status = score >= 80 ? 'COMPLIANT' : score >= 60 ? 'CONDITIONAL' : 'NON_COMPLIANT';
-
+    const score = forcedScore ?? (hasMortgageFlag ? 58 : 78);
+    const isQabas = score === 38 || biz.name.includes('Qabas');
     const isManar = score === 64 || biz.name.includes('Manar');
+
+    const baseRevenue = isQabas ? 10950000 : isManar ? 14200000 : fac * 6.32;
+    const ebitda = isQabas ? 1170000 : isManar ? 3436400 : baseRevenue * 0.242;
+    const annualDebtService = isQabas ? 1330000 : isManar ? 1402612 : fac * 0.168;
+    const dscr = isQabas ? 0.88 : isManar ? 2.45 : Number((ebitda / annualDebtService).toFixed(2));
+
+    const status = score >= 80 ? 'COMPLIANT' : score >= 60 ? 'CONDITIONAL' : 'NON_COMPLIANT';
 
     const newEval: EvaluationPayload = {
       eval_id: `eval_${biz.id}_${Date.now()}`,
@@ -664,18 +674,20 @@ class SanadApiService {
       timestamp: new Date().toISOString(),
       sha256Fingerprint: hash,
       merkleRoot: merkle,
-      blockHeight: 148944,
+      blockHeight: 148948,
       scores: {
         score,
         shariah_score: score,
         status,
-        scoreDelta: score >= 80 ? '+8 pts AAOIFI verified' : isManar ? '-36 pts Taharah Purification & Discrepancies' : score >= 60 ? '+5 pts conditional on Taharah' : '-40 pts: Critical Discrepancy & Mortgage Detected',
-        haramRevenueRatioPct: isManar ? 3.5 : Number((score >= 80 ? 0.12 : score >= 60 ? 1.85 : 3.84).toFixed(2)),
-        debtToAssetsPct: isManar ? 28.0 : Number((score >= 80 ? 18.4 : score >= 60 ? 24.8 : 36.2).toFixed(1)),
-        liquidAssetsRatioPct: 35.4,
-        prohibitedActivitiesFound: score < 60 ? 1 : 0,
+        scoreDelta: score >= 80 ? '+8 pts AAOIFI verified' : isQabas ? '-62 pts: Severe AAOIFI Shariah Breach & Covenant Failure' : isManar ? '-36 pts Taharah Purification & Discrepancies' : '-40 pts: Critical Discrepancy & Mortgage Detected',
+        haramRevenueRatioPct: isQabas ? 8.40 : isManar ? 3.5 : Number((score >= 80 ? 0.12 : score >= 60 ? 1.85 : 3.84).toFixed(2)),
+        debtToAssetsPct: isQabas ? 42.50 : isManar ? 28.0 : Number((score >= 80 ? 18.4 : score >= 60 ? 24.8 : 36.2).toFixed(1)),
+        liquidAssetsRatioPct: isQabas ? 14.20 : 35.4,
+        prohibitedActivitiesFound: isQabas ? 2 : score < 60 ? 1 : 0,
         shariahBoardOpinion: score >= 80
           ? 'Full Shariah Compliance endorsement under AAOIFI Financial Standard No. 21.'
+          : isQabas
+          ? 'HOLD SANCTION: Prohibited interest and non-halal lease income (8.40%) exceeds AAOIFI 5% ceiling; debt ratio (42.5%) exceeds 30% ceiling.'
           : isManar
           ? 'Conditional endorsement subject to KWD 340,000 interest income Taharah purification & lease liability disclosure.'
           : score >= 60
@@ -684,24 +696,99 @@ class SanadApiService {
       },
       financial_analytics: {
         annualRevenueKwd: Math.round(baseRevenue),
-        revenueGrowthPct: isManar ? 6.4 : 14.8,
-        netIncomeKwd: isManar ? 2302388 : Math.round(ebitda * 0.67),
+        revenueGrowthPct: isQabas ? -8.5 : isManar ? 6.4 : 14.8,
+        netIncomeKwd: isQabas ? 550000 : isManar ? 2302388 : Math.round(ebitda * 0.67),
         ebitdaKwd: Math.round(ebitda),
-        operatingMarginPct: 24.2,
+        operatingMarginPct: isQabas ? 10.7 : 24.2,
         ltvRatioPct: ltv,
         facilityRequestedKwd: fac,
         collateralValueKwd: col,
         quarterlyRevenueSparkline: [
-          Math.round(baseRevenue * 0.22),
-          Math.round(baseRevenue * 0.24),
-          Math.round(baseRevenue * 0.26),
           Math.round(baseRevenue * 0.28),
+          Math.round(baseRevenue * 0.26),
+          Math.round(baseRevenue * 0.24),
+          Math.round(baseRevenue * 0.22),
         ],
         annualDebtServiceKwd: Math.round(annualDebtService),
         baselineDscr: dscr,
         covenantMinimumDscr: 1.25,
       },
-      discrepancies: isManar
+      discrepancies: isQabas
+        ? [
+            {
+              id: `disc_qabas_1`,
+              title: 'CRITICAL: Undisclosed Registered Mortgage Lien (KWD 1,450,000)',
+              severity: 'critical',
+              category: 'undisclosed_liability',
+              description: 'Ministry of Commerce registry extract asserts Plot 88-C is free and clear of encumbrances. Central Bank credit ledgers disclose an active first-degree mortgage of KWD 1,450,000.',
+              sourceDocA: {
+                name: 'MOCI Commercial Registry #1149204.pdf',
+                excerpt: 'Section 4: No active mortgage pledges recorded against Plot 88-C Shuwaikh Industrial.',
+                pageOrRef: 'Page 2, Clause 4.1',
+              },
+              sourceDocB: {
+                name: 'CBK Credit Bureau Scorecard.pdf',
+                excerpt: 'Facility #NCB-MORT-114: Active registered mortgage pledge on Plot 88-C Shuwaikh Industrial. Balance: KWD 1,450,000.',
+                pageOrRef: 'Schedule 3, Line 9',
+              },
+              financialImpactKwd: 1450000,
+            },
+            {
+              id: `disc_qabas_2`,
+              title: 'AAOIFI Standard 21 Prohibited Income Breach (8.40%)',
+              severity: 'high',
+              category: 'compliance_breach',
+              description: 'Conventional interest income (KWD 340,000) and conventional sub-lease income (KWD 580,000) represent 8.40% of total revenue, breaching the AAOIFI 5.0% maximum ceiling.',
+              sourceDocA: {
+                name: 'Audited Financials FY2025.pdf',
+                excerpt: 'Income Statement: Sub-lease revenue KWD 580,000; Bank interest income KWD 340,000.',
+                pageOrRef: 'Page 8, Statement 1',
+              },
+              sourceDocB: {
+                name: 'Warba Shariah Audit Workpaper.pdf',
+                excerpt: 'Prohibited revenue ratio computed at 8.40% > 5.00% ceiling. Facility inadmissible under Murabaha standard.',
+                pageOrRef: 'Schedule 1, Row 4',
+              },
+              financialImpactKwd: 920000,
+            },
+            {
+              id: `disc_qabas_3`,
+              title: 'AAOIFI Debt-to-Assets Leverage Breach (42.50%)',
+              severity: 'critical',
+              category: 'compliance_breach',
+              description: 'Total conventional interest-bearing debt of KWD 11,900,000 against total assets of KWD 28,000,000 yields a debt ratio of 42.50%, breaching the AAOIFI 30.0% ceiling.',
+              sourceDocA: {
+                name: 'Audited Balance Sheet FY2025.pdf',
+                excerpt: 'Total conventional bank debt KWD 11,900,000; Total book assets KWD 28,000,000.',
+                pageOrRef: 'Page 12, Balance Sheet',
+              },
+              sourceDocB: {
+                name: 'AAOIFI Ratio Audit Schedule.pdf',
+                excerpt: 'Debt-to-Assets ratio calculated at 42.50% > 30.00% AAOIFI max ceiling.',
+                pageOrRef: 'Page 4, Ratio Table',
+              },
+              financialImpactKwd: 11900000,
+            },
+            {
+              id: `disc_qabas_4`,
+              title: 'DSCR Covenant Collapse under Baseline Operating Cash Flow (0.88x)',
+              severity: 'high',
+              category: 'compliance_breach',
+              description: 'Annual normalized EBITDA of KWD 1,170,000 is insufficient to service annual debt obligations of KWD 1,330,000, resulting in a DSCR of 0.88x versus the 1.25x covenant floor.',
+              sourceDocA: {
+                name: 'Audited Cash Flow Model FY2025.pdf',
+                excerpt: 'EBITDA KWD 1,170,000; Total annual debt service KWD 1,330,000.',
+                pageOrRef: 'Page 19, Schedule 4',
+              },
+              sourceDocB: {
+                name: 'Warba Credit Risk Assessment.pdf',
+                excerpt: 'DSCR 0.88x breaches policy floor of 1.25x. Default risk high under current debt structure.',
+                pageOrRef: 'Section 3, Paragraph 2',
+              },
+              financialImpactKwd: 160000,
+            },
+          ]
+        : isManar
         ? [
             {
               id: `disc_manar_1`,
