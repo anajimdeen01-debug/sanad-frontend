@@ -39,35 +39,48 @@ export const PrimaryAiVerdict: React.FC<PrimaryAiVerdictProps> = ({
 
   // Determine Autonomous AI Decision
   let verdictStatus: 'APPROVED' | 'CONDITIONAL' | 'SUSPENDED' = 'APPROVED';
-  let verdictHeadline = lang === 'ar' ? t.unconditionalApproval : 'UNCONDITIONAL SANCTION RECOMMENDED · PRIME ASSET GRADE';
+  let verdictHeadline = evaluation.verdict?.title || (lang === 'ar' ? t.unconditionalApproval : 'UNCONDITIONAL SANCTION RECOMMENDED · PRIME ASSET GRADE');
   let verdictBadgeBg = 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300';
   let verdictDot = 'bg-emerald-400';
-  let verdictProse = '';
+  let verdictProse = evaluation.verdict?.rationale || '';
 
   if (hasCriticalDisc || score < 60 || dscr < 1.0) {
     verdictStatus = 'SUSPENDED';
-    verdictHeadline = lang === 'ar' ? t.facilitySuspended : 'FACILITY SANCTION SUSPENDED · CRITICAL FORENSIC CONFLICT';
+    verdictHeadline = evaluation.verdict?.title || (lang === 'ar' ? t.facilitySuspended : 'FACILITY SANCTION SUSPENDED · CRITICAL FORENSIC CONFLICT');
     verdictBadgeBg = 'bg-rose-950/80 border-rose-500/50 text-rose-300';
     verdictDot = 'bg-rose-400';
-    verdictProse = lang === 'ar'
-      ? `أظهر الفحص المستندي الآلي وجود تعارض جوهري بين المستندات (رهن عقاري مسجل بقيمة 420,000 د.ك غير مفصح عنه في إقرار السجل التجاري). تعذر استيفاء شروط الضمان وتثبيت الرهن. تم تعليق منح التسهيل حتى شطب الرهن السابق وتقديم شهادة خلو موانع رسمية.`
-      : `Autonomous forensic extraction detected 1 or more critical document contradictions (including an undisclosed registered mortgage of KWD 420,000 conflicting with the commercial registry affidavit). Credit perfection cannot be established. Facility is suspended until mortgage release is verified.`;
+    
+    if (!verdictProse) {
+      const topDisc = discrepancies[0];
+      const conflictMsg = topDisc
+        ? `${topDisc.title}${topDisc.financialImpactKwd ? ` (${topDisc.financialImpactKwd >= 1000000 ? (topDisc.financialImpactKwd/1000000).toFixed(2) + 'M' : topDisc.financialImpactKwd.toLocaleString()} KWD exposure)` : ''}`
+        : `Debt Service Coverage Ratio collapsed to ${dscr}x (below 1.0x insolvency floor)`;
+      verdictProse = lang === 'ar'
+        ? `أظهر الفحص المستندي الآلي وجود تعارض ومخالفات جوهرية (${conflictMsg}). تعذر استيفاء شروط الائتمان وتثبيت الرهن. تم تعليق منح التسهيل حتى تسوية الالتزامات وتقديم إفصاحات رسمية معتمدة.`
+        : `Autonomous forensic extraction detected critical credit and Shariah contradictions (${conflictMsg}). Debt service coverage stands at ${dscr}x (against 1.25x covenant floor). Credit perfection cannot be established. Facility sanction is suspended until formal remediation.`;
+    }
   } else if (score < 80 || evaluation.taharah_schedule.taharahPurificationDueKwd > 20000) {
     verdictStatus = 'CONDITIONAL';
-    verdictHeadline = lang === 'ar' ? t.conditionalApproval : 'CONDITIONAL SANCTION · TAHARAH PURIFICATION REQUIRED';
+    verdictHeadline = evaluation.verdict?.title || (lang === 'ar' ? t.conditionalApproval : 'CONDITIONAL SANCTION · TAHARAH PURIFICATION REQUIRED');
     verdictBadgeBg = 'bg-amber-950/80 border-amber-500/50 text-amber-300';
     verdictDot = 'bg-amber-400';
-    verdictProse = lang === 'ar'
-      ? `تؤكد المراجعة الائتمانية كفاية التدفقات النقدية التشغيلية لتغطية خدمة الدين بمعدل ${dscr}x (الحد الأدنى 1.25x). التوصية بالمنح مشروطة بتطهير مبلغ ${evaluation.taharah_schedule.taharahPurificationDueKwd.toLocaleString()} د.ك من عوائد الفوائد التقليدية العرضية وتوريدها لحساب الهيئة الخيرية قبل بدء السحب.`
-      : `Underwriting model confirms acceptable operating debt capacity (${dscr}x DSCR vs 1.25x minimum). Endorsement is conditional upon mandatory disgorgement of KWD ${evaluation.taharah_schedule.taharahPurificationDueKwd.toLocaleString()} in identified conventional treasury interest income directly to charity prior to line drawdown.`;
+    
+    if (!verdictProse) {
+      verdictProse = lang === 'ar'
+        ? `تؤكد المراجعة الائتمانية كفاية التدفقات النقدية التشغيلية لتغطية خدمة الدين بمعدل ${dscr}x (الحد الأدنى 1.25x). التوصية بالمنح مشروطة بتطهير مبلغ ${evaluation.taharah_schedule.taharahPurificationDueKwd.toLocaleString()} د.ك من عوائد الفوائد التقليدية العرضية (${scores.haramRevenueRatioPct}% من الإيرادات) وتوريدها لحساب الهيئة الخيرية قبل بدء السحب.`
+        : `Underwriting model confirms acceptable operating debt capacity (${dscr}x DSCR vs 1.25x minimum). Endorsement is strictly conditional upon mandatory disgorgement of KWD ${evaluation.taharah_schedule.taharahPurificationDueKwd.toLocaleString()} in identified conventional treasury interest income (${scores.haramRevenueRatioPct}% of revenue) directly to charity prior to line drawdown.`;
+    }
   } else {
     verdictStatus = 'APPROVED';
-    verdictHeadline = lang === 'ar' ? t.unconditionalApproval : 'UNCONDITIONAL SANCTION RECOMMENDED · PRIME ASSET GRADE';
+    verdictHeadline = evaluation.verdict?.title || (lang === 'ar' ? t.unconditionalApproval : 'UNCONDITIONAL SANCTION RECOMMENDED · PRIME ASSET GRADE');
     verdictBadgeBg = 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300';
     verdictDot = 'bg-emerald-400';
-    verdictProse = lang === 'ar'
-      ? `اكتملت المطابقة المستندية الآلية بدقة 99.4%. لا توجد رهون غير معلنة في سجلات وزارة التجارة وسجل الائتمان المركزي. الفحص الشرعي يؤكد التوافق الكامل مع معايير أيوفي رقم 21 و35. التدفقات النقدية تحقق معدل تغطية خدمة دين استثنائي ${dscr}x.`
-      : `Autonomous extraction and multi-document circularization completed with 99.4% confidence. Zero undisclosed liens detected across Ministry of Commerce registers and Central Bank ledgers. Shariah screening validates full adherence to AAOIFI Standards. Operating cash flow yields a strong DSCR of ${dscr}x.`;
+    
+    if (!verdictProse) {
+      verdictProse = lang === 'ar'
+        ? `اكتملت المطابقة المستندية الآلية بدقة 99.4%. لا توجد رهون غير معلنة في سجلات وزارة التجارة وسجل الائتمان المركزي. الفحص الشرعي يؤكد التوافق الكامل مع معايير أيوفي رقم 21 و35 (درجة التوافق ${score}/100). التدفقات النقدية تحقق معدل تغطية خدمة دين قوي ${dscr}x.`
+        : `Autonomous extraction and multi-document circularization completed with 99.4% confidence. Zero undisclosed liens detected across Ministry of Commerce registers and Central Bank ledgers. Shariah screening validates full adherence to AAOIFI Standards (score ${score}/100). Operating cash flow yields a strong DSCR of ${dscr}x.`;
+    }
   }
 
   const ltv = financial_analytics.ltvRatioPct;

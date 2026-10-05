@@ -94,17 +94,33 @@ export const ChapterSynthesis: React.FC<ChapterSynthesisProps> = ({
           </div>
 
           <p>
-            Forensic analysis of treasury records confirms that non-permissible interest income is strictly confined to{' '}
-            <span className="font-mono text-amber-400 font-medium">{scores.haramRevenueRatioPct}%</span> of gross revenue, 
-            maintaining compliance within the statutory 5.0% threshold{' '}
+            Forensic analysis of treasury records confirms that non-permissible interest and non-halal income represents{' '}
+            <span className={`font-mono font-medium ${scores.haramRevenueRatioPct > 5.0 ? 'text-rose-400 font-bold' : 'text-amber-400'}`}>
+              {scores.haramRevenueRatioPct}%
+            </span>{' '}
+            of gross revenue,{' '}
+            {scores.haramRevenueRatioPct > 5.0 ? (
+              <span className="text-rose-400 font-semibold">
+                EXCEEDING the statutory 5.0% maximum ceiling under AAOIFI Standard No. 21
+              </span>
+            ) : (
+              <span>maintaining compliance within the statutory 5.0% threshold</span>
+            )}{' '}
             <button
               onClick={() => handleInlineCitation('SRC-003#aaoifi')}
               className="inline-flex items-center text-purple-400 hover:text-purple-300 font-mono text-xs underline underline-offset-2 mx-1 cursor-pointer"
             >
               [AAOIFI-STD-21]
             </button>. 
-            Total debt to assets stands at <span className="font-mono text-white font-medium">{scores.debtToAssetsPct}%</span> against the 30.0% ceiling, 
-            and liquid assets represent <span className="font-mono text-white font-medium">{scores.liquidAssetsRatioPct}%</span> of total assets.
+            Total debt to assets stands at{' '}
+            <span className={`font-mono font-medium ${scores.debtToAssetsPct > 30.0 ? 'text-rose-400 font-bold' : 'text-white'}`}>
+              {scores.debtToAssetsPct}%
+            </span>{' '}
+            {scores.debtToAssetsPct > 30.0 ? (
+              <span className="text-rose-400 font-semibold">(breaching the 30.0% AAOIFI ceiling)</span>
+            ) : (
+              <span>against the 30.0% ceiling</span>
+            )}, and liquid assets represent <span className="font-mono text-white font-medium">{scores.liquidAssetsRatioPct}%</span> of total assets.
           </p>
 
         </div>

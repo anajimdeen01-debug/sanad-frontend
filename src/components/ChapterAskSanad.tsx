@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { EvaluationPayload, Business, ApprovalWorkflow } from '../types';
+import { apiService } from '../services/api';
 import { 
   Bot, 
   Send, 
@@ -57,118 +58,49 @@ export const ChapterAskSanad: React.FC<ChapterAskSanadProps> = ({
   const financials = evaluation.financial_analytics;
   const scores = evaluation.scores;
 
-  const handleQuery = (queryText: string) => {
+  const handleQuery = async (queryText: string) => {
     const q = queryText.trim();
     if (!q) return;
 
     setIsProcessing(true);
     setInputText('');
 
-    setTimeout(() => {
-      const lower = q.toLowerCase();
-      let newCard: AppendedCard;
-
-      if (lower.includes('purif') || lower.includes('taharah') || lower.includes('interest')) {
-        newCard = {
-          id: `card_${Date.now()}`,
-          query: q,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          answer: `Under AAOIFI Standard No. 21 (§3.4), interest earned on conventional banking placements is strictly prohibited from entering corporate retained earnings. For ${selectedBiz.name}, KWD ${taharah.prohibitedInterestIncomeKwd.toLocaleString()} must be disgorged to ${taharah.designatedCharity} prior to activating the line.`,
-          visualType: 'purification',
-          visualData: {
-            permissible: financials.annualRevenueKwd - taharah.prohibitedInterestIncomeKwd,
-            prohibited: taharah.prohibitedInterestIncomeKwd,
-            pct: taharah.prohibitedIncomePct,
-          },
-          mathProof: {
-            formula: 'Taharah Mandate = Conventional Interest Income Identified (100% Disgorgement)',
-            steps: [
-              `Reported Revenue: KWD ${financials.annualRevenueKwd.toLocaleString()}`,
-              `Prohibited Conventional Revenue: KWD ${taharah.prohibitedInterestIncomeKwd.toLocaleString()}`,
-              `Ratio: (${taharah.prohibitedInterestIncomeKwd.toLocaleString()} ÷ ${financials.annualRevenueKwd.toLocaleString()}) = ${taharah.prohibitedIncomePct}% < 5.0% AAOIFI Cap`,
-            ],
-            result: `Disgorgement Obligation: KWD ${taharah.taharahPurificationDueKwd.toLocaleString()} payable to Bait Al-Zakat`,
-          },
-          citationReceipt: {
-            code: 'AAOIFI-STD-21§3.4',
-            docName: 'Audited Financial Statements (Finance Income Note 18)',
-            excerpt: 'Interest earned on conventional overnight clearing deposits: KWD 14,200.',
-            hash: evaluation.sha256Fingerprint.substring(0, 16) + '...',
-          },
-        };
-      } else if (lower.includes('stress') || lower.includes('shock') || lower.includes('liquidity') || lower.includes('25%')) {
-        const stressedEbitda = financials.ebitdaKwd * 0.68;
-        const stressedDebtService = financials.annualDebtServiceKwd * 1.15;
-        const stressedDscr = Number((stressedEbitda / stressedDebtService).toFixed(2));
-        const pass = stressedDscr >= 1.25;
-
-        newCard = {
-          id: `card_${Date.now()}`,
-          query: q,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          answer: `Extreme Macro Shock Model: Tested -25% revenue decline combined with +250 bps policy rate hike. Stressed DSCR drops from ${financials.baselineDscr}x to ${stressedDscr}x (${pass ? `maintaining +${(stressedDscr - 1.25).toFixed(2)}x cushion above` : `breaching`} the 1.25x covenant floor).`,
-          visualType: 'stress',
-          visualData: {
-            baseline: financials.baselineDscr,
-            stressed: stressedDscr,
-            pass,
-          },
-          mathProof: {
-            formula: 'Stressed DSCR = Stressed EBITDA ÷ Stressed Annual Debt Service',
-            steps: [
-              `Stressed EBITDA: KWD ${Math.round(stressedEbitda).toLocaleString()} (-32% margin degradation)`,
-              `Surged Debt Service: KWD ${Math.round(stressedDebtService).toLocaleString()} (+15% borrowing cost)`,
-              `Coverage: ${Math.round(stressedEbitda).toLocaleString()} ÷ ${Math.round(stressedDebtService).toLocaleString()} = ${stressedDscr}x`,
-            ],
-            result: `Covenant Condition: ${pass ? 'PASS (Adequate Buffer)' : 'BREACH (Underwriting Condition Required)'}`,
-          },
-          citationReceipt: {
-            code: 'WARBA-CP-STRESS§4',
-            docName: 'Warba Bank Private Credit Underwriting Policy',
-            excerpt: 'Borrower must maintain minimum 1.25x DSCR under severe 25% revenue stress.',
-            hash: 'cbk7...9921',
-          },
-        };
-      } else {
-        newCard = {
-          id: `card_${Date.now()}`,
-          query: q,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          answer: `Analysis for "${q}": Borrower exhibits a composite Shariah Admissibility index of ${scores.score}/100 and DSCR of ${financials.baselineDscr}x. Pledged collateral appraised at KWD ${financials.collateralValueKwd.toLocaleString()} yields an LTV of ${financials.ltvRatioPct}%, complying with Warba Bank's 80% maximum limit.`,
-          visualType: 'ratio',
-          visualData: {
-            score: scores.score,
-            dscr: financials.baselineDscr,
-            ltv: financials.ltvRatioPct,
-          },
-          mathProof: {
-            formula: 'LTV = Facility Requested ÷ Appraised Collateral Value',
-            steps: [
-              `Facility Requested: KWD ${financials.facilityRequestedKwd.toLocaleString()}`,
-              `Collateral Appraised: KWD ${financials.collateralValueKwd.toLocaleString()}`,
-              `LTV Ratio: ${financials.ltvRatioPct}% vs Warba Policy Max 80.0%`,
-            ],
-            result: 'Collateral Cushion: PERMITTED',
-          },
-          citationReceipt: {
-            code: 'VAL-CERT#8812',
-            docName: 'Independent Valuation Report (KFH Capital Real Estate)',
-            excerpt: 'Industrial plot appraised at market value with forced liquidation value.',
-            hash: '22dd...55cc',
-          },
-        };
-      }
+    try {
+      const response = await apiService.askSanad(q, evaluation, selectedBiz);
+      
+      const newCard: AppendedCard = {
+        id: `card_${Date.now()}`,
+        query: q,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        answer: response.answer,
+        visualType: response.visualType || 'ratio',
+        visualData: response.visualData || {
+          score: scores.score,
+          dscr: financials.baselineDscr,
+          ltv: financials.ltvRatioPct,
+        },
+        mathProof: response.mathProof,
+        citationReceipt: {
+          code: 'SANAD-AUTONOMOUS-AI§1',
+          docName: `${selectedBiz.name} Credit Assessment (CR #${selectedBiz.cr_number})`,
+          excerpt: `Dynamic underwriter synthesis: Score ${scores.score}/100 (${scores.status}), DSCR ${financials.baselineDscr}x, LTV ${financials.ltvRatioPct}%.`,
+          hash: evaluation.sha256Fingerprint.substring(0, 16) + '...',
+        },
+      };
 
       setAppendedCards(prev => [newCard, ...prev]);
+    } catch (err) {
+      console.error('Ask Sanad query error:', err);
+    } finally {
       setIsProcessing(false);
-    }, 600);
+    }
   };
 
   const presetChips = [
-    { label: '💰 Explain Taharah Math', q: 'Explain the 14,200 KWD purification requirement' },
+    { label: '⚖️ Credit Sanction Verdict', q: 'With all these findings, should they be considered for the loan?' },
+    { label: '💰 Explain Taharah Math', q: `Explain the ${taharah.taharahPurificationDueKwd.toLocaleString()} KWD purification requirement` },
     { label: '📉 Simulate -25% Severe Shock', q: 'Simulate 25% revenue drop and CBK rate hike' },
-    { label: '🔍 Audit Shuwaikh Encumbrance', q: 'Audit Shuwaikh Plot 18-A mortgage discrepancy' },
-    { label: '⚖️ Verify AAOIFI 30% Debt Ceiling', q: 'Verify AAOIFI 30% debt to assets ratio' },
+    { label: '🔍 Audit Registry Discrepancies', q: 'Audit cross-document discrepancies and undisclosed liabilities' },
   ];
 
   return (
