@@ -15,7 +15,7 @@ import { Language, translations } from '../i18n/translations';
 interface ExecutiveTopBarProps {
   businesses: Business[];
   selectedBiz: Business | null;
-  onSelectBiz: (biz: Business) => void;
+  onSelectBiz: (biz: Business | null) => void;
   onOpenNewBorrowerModal: () => void;
   onOpenUploadModal: () => void;
   onOpenAuditModal: () => void;
@@ -52,16 +52,20 @@ export const ExecutiveTopBar: React.FC<ExecutiveTopBarProps> = ({
         
         {/* Left: Warba Bank & Sanad Mark + Dynamic Workspace Selector */}
         <div className="flex items-center gap-4 sm:gap-5">
-          <div className="flex items-center gap-3">
+          <div 
+            onClick={() => onSelectBiz(null)}
+            className="flex items-center gap-3 cursor-pointer group"
+            title={lang === 'ar' ? 'العودة إلى دليل العملاء' : 'Return to Portfolio Directory'}
+          >
             {/* Subtle Metallic Monogram */}
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-700 via-slate-800 to-slate-950 p-[1px] shadow-sm">
-              <div className="w-full h-full bg-[#090D16] rounded-[7px] flex items-center justify-center">
+              <div className="w-full h-full bg-[#090D16] rounded-[7px] flex items-center justify-center group-hover:border-emerald-500/50">
                 <span className="text-emerald-400 font-bold text-xs tracking-wider">WB</span>
               </div>
             </div>
 
             <div className="flex items-baseline gap-2">
-              <span className="font-editorial text-lg tracking-tight text-[#F8FAFC] font-semibold">
+              <span className="font-editorial text-lg tracking-tight text-[#F8FAFC] font-semibold group-hover:text-emerald-300 transition-colors">
                 {lang === 'ar' ? 'سند' : 'Sanad'}
               </span>
               <span className="font-arabic text-xs text-emerald-400/90 font-medium">
@@ -115,6 +119,21 @@ export const ExecutiveTopBar: React.FC<ExecutiveTopBarProps> = ({
                     className="text-slate-400 hover:text-white cursor-pointer"
                   >
                     <RefreshCw className="w-3 h-3" />
+                  </button>
+                </div>
+                
+                <div className="p-1.5 border-b border-white/5">
+                  <button
+                    onClick={() => {
+                      onSelectBiz(null);
+                      setDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded transition-colors cursor-pointer ${
+                      !selectedBiz ? 'bg-emerald-950/40 text-emerald-300 font-medium' : 'text-slate-300 hover:text-white hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <FolderOpen className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{lang === 'ar' ? 'دليل المحفظة الائتمانية' : 'Portfolio Directory (All Borrowers)'}</span>
                   </button>
                 </div>
                 

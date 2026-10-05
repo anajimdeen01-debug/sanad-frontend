@@ -87,26 +87,39 @@ class SanadApiService {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
-            const mapped: Business[] = data.map((item: any) => ({
-              id: item.id || `biz_${Date.now()}`,
-              name: item.name || item.company_name || 'Corporate Borrower',
-              nameArabic: item.nameArabic || item.name_arabic || item.name || '',
-              sector: item.sector || item.industry || 'Commercial & Trade',
-              cr_number: item.cr_number || item.cr || 'N/A',
-              status: item.status || 'under_review',
-              facility_requested: item.facility_requested || item.facility_kwd || 1000000,
-              collateral_value: item.collateral_value || item.collateral_kwd || 1500000,
-              created_at: item.created_at || new Date().toISOString(),
-              riskRating: item.riskRating || item.risk_rating || 'A',
-            }));
-            const combined = [...INITIAL_BUSINESSES];
-            mapped.forEach(mb => {
-              if (!combined.some(cb => cb.id === mb.id || cb.name.toLowerCase() === mb.name.toLowerCase())) {
-                combined.push(mb);
+            const seen = new Set<string>();
+            const dbList: Business[] = [];
+            for (const item of data) {
+              const name = (item.name || item.company_name || '').trim();
+              const cr = (item.cr_number || item.cr || '').trim();
+              const key = cr || name.toLowerCase();
+              if (key && !seen.has(key)) {
+                seen.add(key);
+                dbList.push({
+                  id: item.id || `biz_${Date.now()}`,
+                  name: item.name || item.company_name || 'Corporate Borrower',
+                  nameArabic: item.nameArabic || item.name_arabic || item.name || '',
+                  sector: item.sector || item.industry || 'Commercial & Trade',
+                  cr_number: item.cr_number || item.cr || 'N/A',
+                  status: item.status || 'active',
+                  facility_requested: item.facility_requested || item.facility_kwd || 2500000,
+                  collateral_value: item.collateral_value || item.collateral_kwd || 3500000,
+                  created_at: item.created_at || new Date().toISOString(),
+                  riskRating: item.riskRating || item.risk_rating || 'A',
+                });
+              }
+            }
+
+            INITIAL_BUSINESSES.forEach(ib => {
+              const key = ib.cr_number || ib.name.toLowerCase();
+              if (!seen.has(key)) {
+                seen.add(key);
+                dbList.push(ib);
               }
             });
-            this.businesses = combined;
-            return combined;
+
+            this.businesses = dbList;
+            return dbList;
           }
         }
       } catch (e) {

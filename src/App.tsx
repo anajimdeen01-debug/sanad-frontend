@@ -25,7 +25,10 @@ import {
   CheckCircle2, 
   UploadCloud,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Database,
+  ArrowRight,
+  ArrowLeft
 } from 'lucide-react';
 
 export default function App() {
@@ -66,11 +69,13 @@ export default function App() {
     const bizList = await apiService.getBusinesses();
     setBusinesses(bizList);
 
-    if (bizList.length > 0) {
-      const active = selectedBiz ? (bizList.find(b => b.id === selectedBiz.id) || bizList[0]) : bizList[0];
-      setSelectedBiz(active);
-      const evalData = await apiService.getEvaluation(active.id);
-      setEvaluation(evalData);
+    if (selectedBiz) {
+      const active = bizList.find(b => b.id === selectedBiz.id);
+      if (active) {
+        setSelectedBiz(active);
+        const evalData = await apiService.getEvaluation(active.id);
+        setEvaluation(evalData);
+      }
     }
 
     const audits = await apiService.getAuditTrail();
@@ -196,7 +201,15 @@ export default function App() {
           <>
             {/* Quick Multi-File Dropzone Toggle Bar */}
             <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => { setSelectedBiz(null); setEvaluation(null); }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-xs text-slate-300 hover:text-white transition-colors cursor-pointer border border-white/[0.08]"
+                  title={lang === 'ar' ? 'العودة إلى دليل العملاء' : 'Return to Portfolio Directory'}
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>{lang === 'ar' ? 'دليل العملاء' : 'Directory'}</span>
+                </button>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-xs text-slate-300">
                   {t.activeWorkspaceLabel}: <strong className="text-white font-semibold">{lang === 'ar' && selectedBiz.nameArabic ? selectedBiz.nameArabic : selectedBiz.name}</strong>
@@ -292,28 +305,102 @@ export default function App() {
             </div>
           </>
         ) : (
-          /* Empty Workspace State: Clean, Luxury Institutional Welcome */
-          <div className="py-12 space-y-8 max-w-3xl mx-auto">
-            <div className="text-center space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-950 border border-white/10 p-0.5 mx-auto flex items-center justify-center shadow-xl">
-                <Building2 className="w-6 h-6 text-emerald-400" />
+          /* Institutional Portfolio Workspace Directory */
+          <div className="py-8 space-y-10 max-w-5xl mx-auto">
+            {/* Header */}
+            <div className="text-center space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono">
+                <Database className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{isBackendLive ? `PostgreSQL Database Online · ${businesses.length} Accounts Enrolled` : 'Autonomous Underwriting Engine Online'}</span>
               </div>
-              <h2 className="font-editorial text-2xl lg:text-3xl text-white font-medium">
-                {t.emptyStateTitle}
+              <h2 className="font-editorial text-3xl lg:text-4xl text-white font-medium tracking-tight">
+                {lang === 'ar' ? 'المحفظة الائتمانية والتدقيق الآلي' : 'Corporate Credit Portfolio & Intake'}
               </h2>
-              <p className="text-xs text-slate-400 leading-relaxed font-light max-w-lg mx-auto">
-                {t.emptyStateSubtitle}
+              <p className="text-xs text-slate-400 leading-relaxed font-light max-w-xl mx-auto">
+                {lang === 'ar' 
+                  ? 'اختر منشأة من قاعدة البيانات لفحص ملفها الائتماني والشرعي، أو اسحب مستندات جديدة للمطابقة الفورية.'
+                  : 'Select an active borrower from the credit database to review autonomous Shariah & credit synthesis, or upload a new dossier for real-time extraction.'}
               </p>
             </div>
 
             {/* Directly Embedded Clean Batch Dropzone */}
-            <BatchUploadDropzone
-              onUploadFiles={handleBatchUpload}
-              isIngesting={isIngesting}
-              ingestStep={ingestStep}
-              ingestProgress={ingestProgress}
-              lang={lang}
-            />
+            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.08] p-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                  <UploadCloud className="w-4 h-4 text-emerald-400" />
+                  {lang === 'ar' ? 'رفع ملفات جديدة للاستخراج الآلي' : 'Ingest New Multi-File Credit Dossier'}
+                </span>
+                <span className="text-[11px] text-slate-500 font-mono">PDF, TXT, DOCX, XLSX</span>
+              </div>
+              <BatchUploadDropzone
+                onUploadFiles={handleBatchUpload}
+                isIngesting={isIngesting}
+                ingestStep={ingestStep}
+                ingestProgress={ingestProgress}
+                lang={lang}
+              />
+            </div>
+
+            {/* Borrowers in Database Directory */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-editorial text-xl text-white font-normal flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-blue-400" />
+                  {lang === 'ar' ? 'المنشآت المسجلة في قاعدة البيانات' : 'Active Corporate Accounts in Database'}
+                </h3>
+                <span className="text-xs font-mono text-slate-500">
+                  {businesses.length} {lang === 'ar' ? 'ملفات ائتمانية' : 'Dossiers Ready'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {businesses.map((biz) => {
+                  const displayName = lang === 'ar' && biz.nameArabic ? biz.nameArabic : biz.name;
+                  const isHighRisk = biz.riskRating === 'C' || biz.status === 'flagged';
+                  const isMediumRisk = biz.riskRating === 'BBB' || biz.riskRating === 'BB';
+                  return (
+                    <div 
+                      key={biz.id}
+                      onClick={() => handleSelectBiz(biz)}
+                      className="p-5 rounded-2xl bg-[#0E1424] hover:bg-[#12192D] border border-white/[0.08] hover:border-emerald-500/40 transition-all cursor-pointer group space-y-4 relative overflow-hidden shadow-lg"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="font-medium text-white group-hover:text-emerald-300 transition-colors text-sm">
+                            {displayName}
+                          </p>
+                          <p className="text-xs text-slate-400 font-light">
+                            {biz.sector}
+                          </p>
+                          <p className="text-[11px] font-mono text-slate-500">
+                            CR: {biz.cr_number}
+                          </p>
+                        </div>
+                        <span className={`text-[11px] font-mono px-2 py-0.5 rounded-full border ${
+                          isHighRisk
+                            ? 'bg-rose-950/60 border-rose-500/40 text-rose-300'
+                            : isMediumRisk
+                            ? 'bg-amber-950/60 border-amber-500/40 text-amber-300'
+                            : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
+                        }`}>
+                          Rating {biz.riskRating || 'A'}
+                        </span>
+                      </div>
+
+                      <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs text-slate-400">
+                        <div className="font-mono text-[11px]">
+                          Facility: <span className="text-white font-medium">KWD {(biz.facility_requested / 1000000).toFixed(2)}M</span>
+                        </div>
+                        <span className="flex items-center gap-1.5 text-emerald-400 group-hover:translate-x-1 transition-transform font-medium">
+                          <span>{lang === 'ar' ? 'فتح الملف' : 'Audit Dossier'}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 
