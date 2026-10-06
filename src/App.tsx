@@ -24,6 +24,7 @@ import { NewBorrowerModal } from './components/NewBorrowerModal';
 import { AuditTrailModal } from './components/AuditTrailModal';
 import { BackendSettingsModal } from './components/BackendSettingsModal';
 import { Language, translations } from './i18n/translations';
+import { INITIAL_BUSINESSES, MOCK_EVALUATIONS } from './data/mockData';
 import { 
   Building2, 
   CheckCircle2, 
@@ -42,14 +43,46 @@ import {
 } from 'lucide-react';
 
 export default function App() {
+  // Synchronous resolution of initial URL state (eliminates flash/layout shift on refresh):
+  const getInitialState = () => {
+    if (typeof window === 'undefined') {
+      return { biz: null, tab: 'docs' as const, evalPayload: null };
+    }
+    const params = new URLSearchParams(window.location.search);
+    const targetBizId = params.get('biz');
+    const rawTab = params.get('tab');
+    const targetTab = (rawTab === 'risk' ? 'underwriting' : rawTab) as 'docs' | 'underwriting' | 'chat' | 'radar';
+    const validTab = (targetTab && ['docs', 'underwriting', 'chat', 'radar'].includes(targetTab)) ? targetTab : ('docs' as const);
+
+    if (!targetBizId) {
+      return { biz: null, tab: validTab, evalPayload: null };
+    }
+
+    const clean = targetBizId.trim().toLowerCase();
+    const matched = INITIAL_BUSINESSES.find(b => 
+      b.id.toLowerCase() === clean || 
+      b.cr_number?.toLowerCase() === clean ||
+      b.name?.toLowerCase().includes(clean)
+    );
+
+    if (matched) {
+      const evalData = MOCK_EVALUATIONS[matched.id] || Object.values(MOCK_EVALUATIONS).find(e => e.biz_id === matched.id) || null;
+      return { biz: matched, tab: validTab, evalPayload: evalData };
+    }
+
+    return { biz: null, tab: validTab, evalPayload: null };
+  };
+
+  const initialUrlState = getInitialState();
+
   const [lang, setLang] = useState<Language>('en');
-  const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [selectedBiz, setSelectedBiz] = useState<Business | null>(null);
-  const [evaluation, setEvaluation] = useState<EvaluationPayload | null>(null);
+  const [businesses, setBusinesses] = useState<Business[]>(INITIAL_BUSINESSES);
+  const [selectedBiz, setSelectedBiz] = useState<Business | null>(initialUrlState.biz);
+  const [evaluation, setEvaluation] = useState<EvaluationPayload | null>(initialUrlState.evalPayload);
   const [auditTrail, setAuditTrail] = useState<AuditEvent[]>([]);
 
   // Workspace Mode: Client Documentation Studio vs Underwriting vs Ask Sanad vs Proactive
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'docs' | 'underwriting' | 'chat' | 'radar'>('docs');
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'docs' | 'underwriting' | 'chat' | 'radar'>(initialUrlState.tab);
 
   // Modals & Popovers
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
@@ -75,41 +108,42 @@ export default function App() {
     setLang(prev => (prev === 'en' ? 'ar' : 'en'));
   };
 
-  // Initial Load
+  // Initial Load (Non-blocking background sync)
   const fetchLiveWorkspace = async () => {
-    const live = await apiService.checkLiveBackend();
-    setIsBackendLive(live);
+    try {
+      const [live, bizList, audits] = await Promise.all([
+        apiService.checkLiveBackend(),
+        apiService.getBusinesses(),
+        apiService.getAuditTrail()
+      ]);
 
-    const bizList = await apiService.getBusinesses();
-    setBusinesses(bizList);
-
-    const audits = await apiService.getAuditTrail();
-    setAuditTrail(audits);
-
-    // RESTORE STATE ON BROWSER REFRESH (Preserve page location):
-    const params = new URLSearchParams(window.location.search);
-    const targetBizId = params.get('biz') || localStorage.getItem('sanad_active_biz_id');
-    const rawTab = params.get('tab') || localStorage.getItem('sanad_active_tab');
-    const targetTab = (rawTab === 'risk' ? 'underwriting' : rawTab) as 'docs' | 'underwriting' | 'chat' | 'radar';
-
-    if (targetBizId && bizList.length > 0) {
-      const cleanTarget = targetBizId.trim().toLowerCase();
-      const matched = bizList.find(b => 
-        b.id.toLowerCase() === cleanTarget || 
-        b.cr_number?.toLowerCase() === cleanTarget ||
-        b.name?.toLowerCase().includes(cleanTarget)
-      );
-
-      if (matched) {
-        setSelectedBiz(matched);
-        if (targetTab && ['docs', 'underwriting', 'chat', 'radar'].includes(targetTab)) {
-          setActiveWorkspaceTab(targetTab);
-        }
-        const evalData = await apiService.getEvaluation(matched.id);
-        setEvaluation(evalData);
-        const newUrl = `${window.location.pathname}?biz=${encodeURIComponent(matched.id)}&tab=${encodeURIComponent(targetTab || 'docs')}`;
-        window.history.replaceState(null, '', newUrl);
+      setIsBackendLive(live);
+      if (bizList && bizList.length > 0) {
+        setBusinesses(bizList);
       }
+      if (audits && audits.length > 0) {
+        setAuditTrail(audits);
+      }
+
+      // If URL had a business that was not found locally but exists on backend:
+      const params = new URLSearchParams(window.location.search);
+      const targetBizId = params.get('biz');
+      if (targetBizId && !selectedBiz && bizList && bizList.length > 0) {
+        const cleanTarget = targetBizId.trim().toLowerCase();
+        const matched = bizList.find(b => 
+          b.id.toLowerCase() === cleanTarget || 
+          b.cr_number?.toLowerCase() === cleanTarget ||
+          b.name?.toLowerCase().includes(cleanTarget)
+        );
+
+        if (matched) {
+          setSelectedBiz(matched);
+          const evalData = await apiService.getEvaluation(matched.id);
+          if (evalData) setEvaluation(evalData);
+        }
+      }
+    } catch (err) {
+      console.warn('Live workspace sync notice:', err);
     }
   };
 
@@ -122,7 +156,11 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3200);
   };
 
-  const handleSelectBiz = async (biz: Business, preferredTab?: 'docs' | 'underwriting' | 'chat' | 'radar') => {
+  const handleSelectBiz = async (biz: Business | null, preferredTab?: 'docs' | 'underwriting' | 'chat' | 'radar') => {
+    if (!biz) {
+      handleReturnToDirectory();
+      return;
+    }
     const tabToUse = preferredTab || activeWorkspaceTab || 'docs';
     setSelectedBiz(biz);
     localStorage.setItem('sanad_active_biz_id', biz.id);
@@ -130,8 +168,15 @@ export default function App() {
     const newUrl = `${window.location.pathname}?biz=${encodeURIComponent(biz.id)}&tab=${encodeURIComponent(tabToUse)}`;
     window.history.replaceState(null, '', newUrl);
 
+    // Immediate local evaluation resolution
+    const localEval = MOCK_EVALUATIONS[biz.id] || Object.values(MOCK_EVALUATIONS).find(e => e.biz_id === biz.id);
+    if (localEval) {
+      setEvaluation(localEval);
+    }
     const evalData = await apiService.getEvaluation(biz.id);
-    setEvaluation(evalData);
+    if (evalData) {
+      setEvaluation(evalData);
+    }
   };
 
   const switchWorkspaceTab = (tab: 'docs' | 'underwriting' | 'chat' | 'radar') => {
