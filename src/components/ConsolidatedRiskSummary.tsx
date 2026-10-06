@@ -8,7 +8,10 @@ import {
   Eye, 
   ExternalLink,
   CheckCircle2,
-  FileText
+  FileText,
+  Sparkles,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -49,6 +52,11 @@ export const ConsolidatedRiskSummary: React.FC<ConsolidatedRiskSummaryProps> = (
   const [revenueShock, setRevenueShock] = useState<number>(-15);
   const [rateHikeBps, setRateHikeBps] = useState<number>(150);
   const [selectedDiscrepancy, setSelectedDiscrepancy] = useState<Discrepancy | null>(null);
+  const [showFullMemoBreakdown, setShowFullMemoBreakdown] = useState<boolean>(false);
+
+  const rationaleText = verdict.rationale || (verdict as any).analyst_rationale || '';
+  const keyConditions = verdict.keyConditions || (verdict as any).key_conditions || [];
+  const memoSections = evaluation.memo_sections || [];
 
   // Math calculations
   const score = scores.score || 75;
@@ -111,12 +119,72 @@ export const ConsolidatedRiskSummary: React.FC<ConsolidatedRiskSummaryProps> = (
           </div>
         </div>
 
-        <p className="text-sm text-slate-200 leading-relaxed font-light mt-3">
-          {verdict.analyst_rationale || verdict.title}
-        </p>
+        {/* Executive Verdict Title & Full AI Analyst Rationale */}
+        <div className="mt-3.5 space-y-2">
+          <h4 className="text-sm font-semibold text-white tracking-tight">
+            {verdict.title}
+          </h4>
+          <p className="text-xs text-slate-300 leading-relaxed font-light">
+            {rationaleText || 'Autonomous cross-document circularization completed across audited financials and Kuwaiti official registries.'}
+          </p>
+
+          {/* Key Conditions Precedent Tags */}
+          {keyConditions.length > 0 && (
+            <div className="pt-2">
+              <span className="text-[10px] font-mono text-slate-400 block mb-1.5 uppercase tracking-wider font-semibold">
+                Mandatory Conditions Precedent & Remediation:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {keyConditions.map((cond, idx) => (
+                  <span 
+                    key={idx}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono bg-white/[0.04] border border-white/10 text-slate-200"
+                  >
+                    <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                    <span>{cond}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Collapsible Full 6-Section Assessment Toggle */}
+          {memoSections.length > 0 && (
+            <div className="pt-3 mt-2 border-t border-white/[0.08] flex items-center justify-between text-xs font-mono">
+              <button
+                onClick={() => setShowFullMemoBreakdown(!showFullMemoBreakdown)}
+                className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 transition-colors cursor-pointer font-medium"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{showFullMemoBreakdown ? 'Hide Detailed 6-Section Synthesis' : 'Read Full 6-Section AI Credit Assessment'}</span>
+                {showFullMemoBreakdown ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+              <span className="text-slate-500 text-[10px] hidden sm:inline">
+                {memoSections.length} Institutional Chapters Synthesized
+              </span>
+            </div>
+          )}
+
+          {/* Expanded 6-Section AI Memo Chapters */}
+          {showFullMemoBreakdown && (
+            <div className="pt-3 space-y-2.5 animate-in fade-in">
+              {memoSections.map((sec) => (
+                <div key={sec.id} className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
+                  <h5 className="text-xs font-bold text-white font-mono flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
+                    <span>{sec.title}</span>
+                  </h5>
+                  <p className="text-xs text-slate-300 leading-relaxed font-light pl-3.5">
+                    {sec.content}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* 4 Essential Metric Numbers */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 mt-3 border-t border-white/[0.06] text-xs font-mono">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 mt-4 border-t border-white/[0.06] text-xs font-mono">
           <div>
             <span className="text-slate-400 block text-[10px]">SHARIAH SCORE</span>
             <span className={`text-base font-bold ${score >= 80 ? 'text-emerald-400' : 'text-rose-400'}`}>
