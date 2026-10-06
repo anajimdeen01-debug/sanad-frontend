@@ -81,6 +81,31 @@ export default function App() {
 
     const audits = await apiService.getAuditTrail();
     setAuditTrail(audits);
+
+    // RESTORE STATE ON BROWSER REFRESH (Preserve page location):
+    const params = new URLSearchParams(window.location.search);
+    const targetBizId = params.get('biz') || localStorage.getItem('sanad_active_biz_id');
+    const targetTab = (params.get('tab') as 'docs' | 'underwriting' | 'radar') || (localStorage.getItem('sanad_active_tab') as any);
+
+    if (targetBizId && bizList.length > 0) {
+      const cleanTarget = targetBizId.trim().toLowerCase();
+      const matched = bizList.find(b => 
+        b.id.toLowerCase() === cleanTarget || 
+        b.cr_number?.toLowerCase() === cleanTarget ||
+        b.name?.toLowerCase().includes(cleanTarget)
+      );
+
+      if (matched) {
+        setSelectedBiz(matched);
+        if (targetTab && ['docs', 'underwriting', 'radar'].includes(targetTab)) {
+          setActiveWorkspaceTab(targetTab);
+        }
+        const evalData = await apiService.getEvaluation(matched.id);
+        setEvaluation(evalData);
+        const newUrl = `${window.location.pathname}?biz=${encodeURIComponent(matched.id)}&tab=${encodeURIComponent(targetTab || 'docs')}`;
+        window.history.replaceState(null, '', newUrl);
+      }
+    }
   };
 
   useEffect(() => {
@@ -92,10 +117,32 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3200);
   };
 
-  const handleSelectBiz = async (biz: Business) => {
+  const handleSelectBiz = async (biz: Business, preferredTab?: 'docs' | 'underwriting' | 'radar') => {
+    const tabToUse = preferredTab || activeWorkspaceTab || 'docs';
     setSelectedBiz(biz);
+    localStorage.setItem('sanad_active_biz_id', biz.id);
+    localStorage.setItem('sanad_active_tab', tabToUse);
+    const newUrl = `${window.location.pathname}?biz=${encodeURIComponent(biz.id)}&tab=${encodeURIComponent(tabToUse)}`;
+    window.history.replaceState(null, '', newUrl);
+
     const evalData = await apiService.getEvaluation(biz.id);
     setEvaluation(evalData);
+  };
+
+  const switchWorkspaceTab = (tab: 'docs' | 'underwriting' | 'radar') => {
+    setActiveWorkspaceTab(tab);
+    localStorage.setItem('sanad_active_tab', tab);
+    if (selectedBiz) {
+      const newUrl = `${window.location.pathname}?biz=${encodeURIComponent(selectedBiz.id)}&tab=${encodeURIComponent(tab)}`;
+      window.history.replaceState(null, '', newUrl);
+    }
+  };
+
+  const handleReturnToDirectory = () => {
+    setSelectedBiz(null);
+    setEvaluation(null);
+    localStorage.removeItem('sanad_active_biz_id');
+    window.history.replaceState(null, '', window.location.pathname);
   };
 
   // Live Multi-Source Ingestion Pull (MOCI + CiNet + Finacle by CR)
@@ -243,7 +290,7 @@ export default function App() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => { setSelectedBiz(null); setEvaluation(null); }}
+                  onClick={handleReturnToDirectory}
                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-xs text-slate-300 hover:text-white transition-colors cursor-pointer border border-white/[0.08]"
                   title={lang === 'ar' ? 'العودة إلى دليل العملاء' : 'Return to Portfolio Directory'}
                 >
@@ -262,7 +309,7 @@ export default function App() {
               {/* TRACK 1 WORKSPACE TABS */}
               <div className="flex items-center gap-1.5 bg-white/[0.04] p-1 rounded-xl border border-white/10 text-xs">
                 <button
-                  onClick={() => setActiveWorkspaceTab('docs')}
+                  onClick={() => switchWorkspaceTab('docs')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-colors cursor-pointer ${
                     activeWorkspaceTab === 'docs'
                       ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-900/30'
@@ -275,7 +322,7 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => setActiveWorkspaceTab('underwriting')}
+                  onClick={() => switchWorkspaceTab('underwriting')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-colors cursor-pointer ${
                     activeWorkspaceTab === 'underwriting'
                       ? 'bg-slate-800 text-white font-semibold'
@@ -287,7 +334,7 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => setActiveWorkspaceTab('radar')}
+                  onClick={() => switchWorkspaceTab('radar')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-colors cursor-pointer ${
                     activeWorkspaceTab === 'radar'
                       ? 'bg-slate-800 text-white font-semibold'
