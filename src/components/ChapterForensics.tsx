@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Discrepancy, MemoSection } from '../types';
-import { AlertOctagon, AlertTriangle, ShieldCheck, FileText, CheckCircle2, Split } from 'lucide-react';
+import { AlertOctagon, AlertTriangle, ShieldCheck, FileText, CheckCircle2, ExternalLink, Eye } from 'lucide-react';
+import { DocumentCompareModal } from './DocumentCompareModal';
 
 interface ChapterForensicsProps {
   discrepancies: Discrepancy[];
@@ -12,6 +13,7 @@ export const ChapterForensics: React.FC<ChapterForensicsProps> = ({
   memoSection,
 }) => {
   const [selectedDiscIndex, setSelectedDiscIndex] = useState<number>(0);
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState<boolean>(false);
 
   const activeDisc = discrepancies[selectedDiscIndex] || discrepancies[0];
   const isCritical = activeDisc?.severity === 'critical';
@@ -66,7 +68,7 @@ export const ChapterForensics: React.FC<ChapterForensicsProps> = ({
             <ShieldCheck className="w-10 h-10 text-emerald-400 mx-auto" />
             <h3 className="font-editorial text-xl text-white">Full Cross-Document Alignment</h3>
             <p className="text-xs text-slate-300 leading-relaxed font-light">
-              Autonomous verification cross-checked 14 submitted corporate filings, bank statements, and registry filings. 
+              Autonomous verification cross-checked all submitted corporate filings, bank statements, and registry filings. 
               Zero undisclosed commercial mortgages, unrecorded lease commitments, or top-line variances were detected. 
               Collateral title deeds are authenticated as first-degree unencumbered charges.
             </p>
@@ -101,14 +103,14 @@ export const ChapterForensics: React.FC<ChapterForensicsProps> = ({
             {/* Evidence Diff Card */}
             <div className="rounded-2xl bg-white/[0.02] border border-white/[0.08] p-6 lg:p-8 space-y-6">
               
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-4 border-b border-white/[0.06]">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-white/[0.06]">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-xl ${isCritical ? 'bg-rose-950/80 text-rose-400 border border-rose-500/40' : 'bg-amber-950/80 text-amber-400 border border-amber-500/40'}`}>
                     {isCritical ? <AlertOctagon className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
                   </div>
                   <div>
                     <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
-                      Discrepancy Category: {activeDisc.category}
+                      Discrepancy Category: {activeDisc.category.replace(/_/g, ' ')}
                     </span>
                     <h3 className="font-editorial text-lg text-white font-medium">
                       {activeDisc.title}
@@ -116,11 +118,24 @@ export const ChapterForensics: React.FC<ChapterForensicsProps> = ({
                   </div>
                 </div>
 
-                {activeDisc.financialImpactKwd && (
-                  <span className="font-mono text-xs font-semibold px-2.5 py-1 rounded bg-rose-950/60 border border-rose-500/30 text-rose-300">
-                    Unreconciled Exposure: KWD {activeDisc.financialImpactKwd.toLocaleString()}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {activeDisc.financialImpactKwd && (
+                    <span className="font-mono text-xs font-semibold px-2.5 py-1 rounded bg-rose-950/60 border border-rose-500/30 text-rose-300">
+                      Unreconciled Exposure: KWD {activeDisc.financialImpactKwd.toLocaleString()}
+                    </span>
+                  )}
+                  
+                  {/* Button to open Document Page Provenance Inspector */}
+                  <button
+                    onClick={() => setIsCompareModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs font-mono transition-colors cursor-pointer"
+                    title="Open side-by-side scanned document page viewer"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Inspect Scanned Pages</span>
+                    <ExternalLink className="w-3 h-3 text-blue-400" />
+                  </button>
+                </div>
               </div>
 
               {/* Analysis Prose */}
@@ -132,27 +147,45 @@ export const ChapterForensics: React.FC<ChapterForensicsProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                 
                 {/* Column 1: Document A (The Claim) */}
-                <div className="p-4 rounded-xl bg-[#090D16] border border-blue-500/20 space-y-2">
+                <div 
+                  onClick={() => setIsCompareModalOpen(true)}
+                  className="p-4 rounded-xl bg-[#090D16] border border-blue-500/20 hover:border-blue-500/40 transition-colors cursor-pointer space-y-2 group"
+                >
                   <div className="flex items-center justify-between text-xs text-blue-400 font-mono pb-2 border-b border-white/[0.06]">
-                    <span className="font-semibold truncate max-w-[200px]">{activeDisc.sourceDocA.name}</span>
-                    <span className="text-slate-400">{activeDisc.sourceDocA.pageOrRef}</span>
+                    <span className="font-semibold truncate max-w-[200px] group-hover:text-blue-300">{activeDisc.sourceDocA.name}</span>
+                    <span className="text-blue-300 font-bold bg-blue-950/80 px-2 py-0.5 rounded border border-blue-500/30">
+                      📄 {activeDisc.sourceDocA.pageOrRef}
+                    </span>
                   </div>
                   <p className="text-xs text-slate-400 font-mono text-[10px] uppercase">Borrower Declaration Clause:</p>
-                  <p className="text-xs text-slate-200 italic leading-relaxed">
+                  <p className="text-xs text-slate-200 italic leading-relaxed group-hover:text-white">
                     "{activeDisc.sourceDocA.excerpt}"
                   </p>
+                  <div className="pt-1 flex items-center justify-between text-[10px] font-mono text-slate-500">
+                    <span>Declared Corporate Filing</span>
+                    <span className="text-blue-400 group-hover:underline">Click to inspect page →</span>
+                  </div>
                 </div>
 
                 {/* Column 2: Document B (The Contradiction) */}
-                <div className="p-4 rounded-xl bg-[#090D16] border border-rose-500/30 space-y-2">
+                <div 
+                  onClick={() => setIsCompareModalOpen(true)}
+                  className="p-4 rounded-xl bg-[#090D16] border border-rose-500/30 hover:border-rose-500/50 transition-colors cursor-pointer space-y-2 group"
+                >
                   <div className="flex items-center justify-between text-xs text-rose-400 font-mono pb-2 border-b border-white/[0.06]">
-                    <span className="font-semibold truncate max-w-[200px]">{activeDisc.sourceDocB.name}</span>
-                    <span className="text-slate-400">{activeDisc.sourceDocB.pageOrRef}</span>
+                    <span className="font-semibold truncate max-w-[200px] group-hover:text-rose-300">{activeDisc.sourceDocB.name}</span>
+                    <span className="text-rose-300 font-bold bg-rose-950/80 px-2 py-0.5 rounded border border-rose-500/30">
+                      📄 {activeDisc.sourceDocB.pageOrRef}
+                    </span>
                   </div>
                   <p className="text-xs text-rose-400 font-mono text-[10px] uppercase font-semibold">Contradicting Official Record:</p>
-                  <p className="text-xs text-rose-200 italic leading-relaxed">
+                  <p className="text-xs text-rose-200 italic leading-relaxed group-hover:text-white">
                     "{activeDisc.sourceDocB.excerpt}"
                   </p>
+                  <div className="pt-1 flex items-center justify-between text-[10px] font-mono text-slate-500">
+                    <span>Central Bank / Registry Truth</span>
+                    <span className="text-rose-400 group-hover:underline">Click to inspect page →</span>
+                  </div>
                 </div>
 
               </div>
@@ -173,6 +206,12 @@ export const ChapterForensics: React.FC<ChapterForensicsProps> = ({
         )}
 
       </div>
+
+      {/* Modal for side-by-side scanned document page viewing */}
+      <DocumentCompareModal
+        discrepancy={isCompareModalOpen ? activeDisc : null}
+        onClose={() => setIsCompareModalOpen(false)}
+      />
 
     </article>
   );

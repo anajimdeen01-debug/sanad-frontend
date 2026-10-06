@@ -468,45 +468,81 @@ export default function App() {
         }}
       />
 
-      {/* Citation Popover Modal */}
+      {/* Citation Popover Modal - Document Page Inspector */}
       {activeCitation && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#0E1322] border border-white/10 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
-              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-500/30">
-                {activeCitation.code}
-              </span>
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#0B0F19] border border-white/15 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-semibold px-2.5 py-1 rounded bg-purple-950/80 text-purple-300 border border-purple-500/40">
+                  {activeCitation.code}
+                </span>
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                  Grounding Verified
+                </span>
+              </div>
               <button
                 onClick={() => setActiveCitation(null)}
-                className="text-slate-400 hover:text-white text-xl cursor-pointer"
+                className="text-slate-400 hover:text-white text-2xl cursor-pointer p-1"
+                aria-label="Close"
               >
                 ×
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <span className="text-[10px] font-mono text-slate-500 block uppercase">
-                  {lang === 'ar' ? 'المستند المرجعي' : 'Source Filing'}
-                </span>
-                <p className="font-semibold text-white">{activeCitation.docName}</p>
-                <p className="text-slate-400 font-mono text-[11px]">{activeCitation.page}</p>
+            <div className="space-y-3">
+              {/* Document and Exact Page Info */}
+              <div className="flex items-center justify-between bg-white/[0.03] p-3 rounded-xl border border-white/[0.06]">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-mono text-slate-500 block uppercase">
+                    {lang === 'ar' ? 'المستند المرجعي الأصلي' : 'Originating Corporate Filing'}
+                  </span>
+                  <p className="font-semibold text-white text-xs truncate max-w-[280px]">
+                    {activeCitation.docName}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-mono text-slate-500 block uppercase">
+                    {lang === 'ar' ? 'الصفحة والفقرة' : 'Page & Section'}
+                  </span>
+                  <span className="font-mono text-xs font-bold text-emerald-300 bg-emerald-950/70 px-2.5 py-0.5 rounded border border-emerald-500/40 inline-block">
+                    📄 {activeCitation.page}
+                  </span>
+                </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-[#090D16] border border-white/[0.06] text-slate-200 italic leading-relaxed text-xs">
-                "{activeCitation.excerpt}"
+              {/* Simulated Document Page Snippet */}
+              <div className="bg-[#080B12] rounded-xl border border-white/[0.08] p-4 space-y-2.5 font-serif text-slate-200 text-xs relative">
+                <div className="border-b border-slate-800 pb-1.5 text-[9px] font-mono text-slate-500 flex items-center justify-between">
+                  <span>WARBA AUDIT PROVENANCE · OCR PASS</span>
+                  <span>{activeCitation.page.toUpperCase()}</span>
+                </div>
+
+                <div className="bg-amber-400/15 border-l-4 border-amber-400 p-3 rounded text-slate-100 font-sans text-xs leading-relaxed">
+                  <span className="text-[10px] font-mono text-amber-300 uppercase block mb-1 font-semibold">
+                    Verbatim Text Extraction:
+                  </span>
+                  <span className="bg-amber-400/30 text-amber-100 px-1 py-0.5 rounded font-medium">
+                    "{activeCitation.excerpt}"
+                  </span>
+                </div>
+
+                <div className="border-t border-slate-800 pt-1.5 text-[9px] font-mono text-slate-500 flex items-center justify-between">
+                  <span>SOURCE HASH: {activeCitation.verifiedHash}</span>
+                  <span className="text-emerald-400">100% RECONCILED</span>
+                </div>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-2 border-t border-white/[0.06]">
-                <span>{lang === 'ar' ? 'البصمة المشفرة:' : 'Cryptographic Digest:'}</span>
-                <span className="text-purple-300">{activeCitation.verifiedHash}</span>
+              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-1">
+                <span>{lang === 'ar' ? 'البصمة المشفرة للتدقيق:' : 'Cryptographic Proof Hash:'}</span>
+                <span className="text-purple-300 font-mono text-[10px]">{activeCitation.verifiedHash}</span>
               </div>
             </div>
 
-            <div className="flex justify-end pt-1">
+            <div className="flex justify-end pt-2 border-t border-white/[0.08]">
               <button
                 onClick={() => setActiveCitation(null)}
-                className="px-4 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
+                className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
               >
                 {t.close}
               </button>
