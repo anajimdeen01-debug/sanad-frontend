@@ -15,6 +15,9 @@ import { ChapterCovenants } from './components/ChapterCovenants';
 import { ChapterForensics } from './components/ChapterForensics';
 import { ChapterIslamicStructure } from './components/ChapterIslamicStructure';
 import { ChapterAskSanad } from './components/ChapterAskSanad';
+import { ClientDocumentationStudio } from './components/ClientDocumentationStudio';
+import { LiveSourcePuller } from './components/LiveSourcePuller';
+import { ProactiveRmRadar } from './components/ProactiveRmRadar';
 import { UploadDossierModal } from './components/UploadDossierModal';
 import { NewBorrowerModal } from './components/NewBorrowerModal';
 import { AuditTrailModal } from './components/AuditTrailModal';
@@ -28,7 +31,11 @@ import {
   ChevronUp,
   Database,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  FileText,
+  Layers,
+  Zap,
+  Sparkles
 } from 'lucide-react';
 
 export default function App() {
@@ -37,6 +44,9 @@ export default function App() {
   const [selectedBiz, setSelectedBiz] = useState<Business | null>(null);
   const [evaluation, setEvaluation] = useState<EvaluationPayload | null>(null);
   const [auditTrail, setAuditTrail] = useState<AuditEvent[]>([]);
+
+  // Workspace Mode: Client Documentation Studio vs Underwriting vs Proactive
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'docs' | 'underwriting' | 'radar'>('docs');
 
   // Modals & Popovers
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
@@ -69,15 +79,6 @@ export default function App() {
     const bizList = await apiService.getBusinesses();
     setBusinesses(bizList);
 
-    if (selectedBiz) {
-      const active = bizList.find(b => b.id === selectedBiz.id);
-      if (active) {
-        setSelectedBiz(active);
-        const evalData = await apiService.getEvaluation(active.id);
-        setEvaluation(evalData);
-      }
-    }
-
     const audits = await apiService.getAuditTrail();
     setAuditTrail(audits);
   };
@@ -95,6 +96,44 @@ export default function App() {
     setSelectedBiz(biz);
     const evalData = await apiService.getEvaluation(biz.id);
     setEvaluation(evalData);
+  };
+
+  // Live Multi-Source Ingestion Pull (MOCI + CiNet + Finacle by CR)
+  const handleSelectBusinessByCr = async (crNumber: string) => {
+    const cleanCr = crNumber.trim().toLowerCase();
+    const found = businesses.find(b => 
+      b.cr_number?.toLowerCase().includes(cleanCr) || 
+      cleanCr.includes(b.cr_number?.toLowerCase())
+    );
+
+    if (found) {
+      await handleSelectBiz(found);
+      setActiveWorkspaceTab('docs');
+      showToast(`Registry dossier pulled for ${found.name}`);
+    } else {
+      const newBiz: Business = {
+        id: `biz_${Date.now()}`,
+        name: `Corporate Entity (${crNumber})`,
+        nameArabic: 'المنشأة التجارية المعتمدة',
+        sector: 'Industrial & Trade Logistics',
+        cr_number: crNumber,
+        status: 'under_review',
+        facility_requested: 2500000,
+        collateral_value: 3500000,
+        created_at: new Date().toISOString(),
+        riskRating: 'A',
+      };
+      const created = await apiService.createBusiness(newBiz);
+      await handleSelectBiz(created);
+      setActiveWorkspaceTab('docs');
+      showToast(`Live records synthesized for ${crNumber}`);
+    }
+  };
+
+  // 1-Click Proactive RM Action Trigger
+  const handleSelectClientAndDoc = async (crNumber: string, docType: 'cam' | 'term_sheet' | 'rm_brief') => {
+    await handleSelectBusinessByCr(crNumber);
+    setActiveWorkspaceTab('docs');
   };
 
   // MULTI-FILE BATCH UPLOAD: POST /api/upload
@@ -120,6 +159,7 @@ export default function App() {
       setAuditTrail(audits);
 
       setShowBatchDropzone(false);
+      setActiveWorkspaceTab('docs');
       showToast(lang === 'ar' ? `اكتمل التدقيق الائتماني: ${res.business.nameArabic || res.business.name}` : `Assessment synthesized: ${res.business.name}`);
     } catch (e) {
       console.error(e);
@@ -154,7 +194,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Warba_Credit_Memo_${selectedBiz.cr_number}_${new Date().toISOString().split('T')[0]}.md`);
+    link.download = `Warba_Credit_Memo_${selectedBiz.cr_number}_${new Date().toISOString().split('T')[0]}.md`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -164,7 +204,7 @@ export default function App() {
   return (
     <div 
       dir={lang === 'ar' ? 'rtl' : 'ltr'}
-      className={`min-h-screen bg-[#090D16] text-[#F8FAFC] flex flex-col selection:bg-emerald-500/20 selection:text-emerald-300 ${
+      className={`min-h-screen bg-[#090D16] text-[#F8FAFC] flex flex-col selection:bg-blue-500/20 selection:text-blue-300 ${
         lang === 'ar' ? 'font-arabic' : 'font-sans'
       }`}
     >
@@ -190,8 +230,8 @@ export default function App() {
         
         {/* Toast Indicator */}
         {toastMessage && (
-          <div className="fixed top-16 right-8 z-50 p-3 rounded-xl bg-[#0E1322] border border-emerald-500/40 text-emerald-300 text-xs font-mono shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <div className="fixed top-16 right-8 z-50 p-3 rounded-xl bg-[#0E1322] border border-blue-500/40 text-blue-300 text-xs font-mono shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+            <CheckCircle2 className="w-4 h-4 text-blue-400" />
             <span>{toastMessage}</span>
           </div>
         )}
@@ -199,8 +239,8 @@ export default function App() {
         {/* Dynamic State: If a Borrower & Evaluation are loaded */}
         {selectedBiz && evaluation ? (
           <>
-            {/* Quick Multi-File Dropzone Toggle Bar */}
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
+            {/* Top Workspace Bar & Return to Directory */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => { setSelectedBiz(null); setEvaluation(null); }}
@@ -219,129 +259,193 @@ export default function App() {
                 </span>
               </div>
 
-              <button
-                onClick={() => setShowBatchDropzone(!showBatchDropzone)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 text-xs text-slate-300 hover:text-white transition-colors cursor-pointer"
-              >
-                <UploadCloud className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{showBatchDropzone ? t.hideBatchIngestion : t.showBatchIngestion}</span>
-                {showBatchDropzone ? <ChevronUp className="w-3 h-3 text-slate-400" /> : <ChevronDown className="w-3 h-3 text-slate-400" />}
-              </button>
+              {/* TRACK 1 WORKSPACE TABS */}
+              <div className="flex items-center gap-1.5 bg-white/[0.04] p-1 rounded-xl border border-white/10 text-xs">
+                <button
+                  onClick={() => setActiveWorkspaceTab('docs')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-colors cursor-pointer ${
+                    activeWorkspaceTab === 'docs'
+                      ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-900/30'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Client Doc Studio</span>
+                  <span className="text-[10px] bg-blue-950 px-1.5 py-0.2 rounded text-blue-200">Track 1</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveWorkspaceTab('underwriting')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-colors cursor-pointer ${
+                    activeWorkspaceTab === 'underwriting'
+                      ? 'bg-slate-800 text-white font-semibold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Underwriting Dossier</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveWorkspaceTab('radar')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-colors cursor-pointer ${
+                    activeWorkspaceTab === 'radar'
+                      ? 'bg-slate-800 text-white font-semibold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Proactive RM Radar</span>
+                </button>
+              </div>
             </div>
 
-            {/* Collapsible Multi-File Batch Dropzone */}
-            {showBatchDropzone && (
-              <div className="animate-in fade-in slide-in-from-top-2">
-                <BatchUploadDropzone
-                  onUploadFiles={handleBatchUpload}
-                  isIngesting={isIngesting}
-                  ingestStep={ingestStep}
-                  ingestProgress={ingestProgress}
+            {/* TAB 1: CLIENT DOCUMENTATION STUDIO (TRACK 1 CORE DELIVERABLE) */}
+            {activeWorkspaceTab === 'docs' && (
+              <section aria-label="Client Documentation Studio" className="animate-in fade-in">
+                <ClientDocumentationStudio
+                  business={selectedBiz}
+                  evaluation={evaluation}
                   lang={lang}
                 />
+              </section>
+            )}
+
+            {/* TAB 2: AUTONOMOUS UNDERWRITING DOSSIER (THE 5 DYNAMIC CHAPTERS) */}
+            {activeWorkspaceTab === 'underwriting' && (
+              <div className="space-y-6 animate-in fade-in">
+                {/* PRIMARY AI VERDICT: Front-and-Center */}
+                <section aria-label={t.verdictSynthesisTitle}>
+                  <PrimaryAiVerdict
+                    evaluation={evaluation}
+                    selectedBiz={selectedBiz}
+                    approvalWorkflow={evaluation.approval_workflow}
+                    onApprove={handleApprove}
+                    isApproving={isApproving}
+                    onExportMemo={handleExportMemo}
+                    onOpenUploadModal={() => setIsUploadModalOpen(true)}
+                    lang={lang}
+                  />
+                </section>
+
+                {/* 2. Quiet Metric Ribbon */}
+                <section aria-label="Essential Figures">
+                  <MetricRibbon
+                    evaluation={evaluation}
+                    selectedBiz={selectedBiz}
+                    lang={lang}
+                  />
+                </section>
+
+                {/* The 5 Dynamic AI Living Chapters */}
+                <div className="space-y-0 divide-y-0">
+                  <ChapterSynthesis
+                    evaluation={evaluation}
+                    selectedBiz={selectedBiz}
+                    onCitationClick={cit => setActiveCitation(cit)}
+                  />
+
+                  <ChapterCovenants
+                    scenarios={evaluation.stress_scenarios}
+                    financials={evaluation.financial_analytics}
+                    memoSection={evaluation.memo_sections?.find(s => s.id === 2 || s.title?.toLowerCase().includes('covenant') || s.title?.toLowerCase().includes('resilience')) || evaluation.memo_sections?.[1]}
+                  />
+
+                  <ChapterForensics
+                    discrepancies={evaluation.discrepancies}
+                    memoSection={evaluation.memo_sections?.find(s => s.id === 3 || s.title?.toLowerCase().includes('forensic') || s.title?.toLowerCase().includes('detective')) || evaluation.memo_sections?.[2]}
+                  />
+
+                  <ChapterIslamicStructure
+                    schedule={evaluation.taharah_schedule}
+                    financials={evaluation.financial_analytics}
+                    selectedBiz={selectedBiz}
+                    memoSection={evaluation.memo_sections?.find(s => s.id === 4 || s.title?.toLowerCase().includes('islamic') || s.title?.toLowerCase().includes('taharah')) || evaluation.memo_sections?.[3]}
+                  />
+
+                  <ChapterAskSanad
+                    evaluation={evaluation}
+                    selectedBiz={selectedBiz}
+                    approvalWorkflow={evaluation.approval_workflow}
+                    onApprove={handleApprove}
+                    isApproving={isApproving}
+                  />
+                </div>
               </div>
             )}
 
-            {/* PRIMARY AI VERDICT: Front-and-Center */}
-            <section aria-label={t.verdictSynthesisTitle}>
-              <PrimaryAiVerdict
-                evaluation={evaluation}
-                selectedBiz={selectedBiz}
-                approvalWorkflow={evaluation.approval_workflow}
-                onApprove={handleApprove}
-                isApproving={isApproving}
-                onExportMemo={handleExportMemo}
-                onOpenUploadModal={() => setIsUploadModalOpen(true)}
-                lang={lang}
-              />
-            </section>
+            {/* TAB 3: PROACTIVE RM RADAR */}
+            {activeWorkspaceTab === 'radar' && (
+              <section aria-label="Proactive Radar" className="animate-in fade-in">
+                <ProactiveRmRadar
+                  onSelectClientAndDoc={handleSelectClientAndDoc}
+                  lang={lang}
+                />
+              </section>
+            )}
 
-            {/* 2. Quiet Metric Ribbon */}
-            <section aria-label="Essential Figures">
-              <MetricRibbon
-                evaluation={evaluation}
-                selectedBiz={selectedBiz}
-                lang={lang}
-              />
-            </section>
-
-            {/* 3. The 5 Dynamic AI Living Chapters */}
-            <div className="space-y-0 divide-y-0">
-              
-              {/* Chapter 1: Autonomous Shariah & Credit Synthesis */}
-              <ChapterSynthesis
-                evaluation={evaluation}
-                selectedBiz={selectedBiz}
-                onCitationClick={cit => setActiveCitation(cit)}
-              />
-
-              {/* Chapter 2: Covenant Resilience & Stress Simulation */}
-              <ChapterCovenants
-                scenarios={evaluation.stress_scenarios}
-                financials={evaluation.financial_analytics}
-                memoSection={evaluation.memo_sections?.find(s => s.id === 2 || s.title?.toLowerCase().includes('covenant') || s.title?.toLowerCase().includes('resilience')) || evaluation.memo_sections?.[1]}
-              />
-
-              {/* Chapter 3: Forensic Cross-Document Detective Findings */}
-              <ChapterForensics
-                discrepancies={evaluation.discrepancies}
-                memoSection={evaluation.memo_sections?.find(s => s.id === 3 || s.title?.toLowerCase().includes('forensic') || s.title?.toLowerCase().includes('detective')) || evaluation.memo_sections?.[2]}
-              />
-
-              {/* Chapter 4: Islamic Structuring & Taharah/Zakat Mandate */}
-              <ChapterIslamicStructure
-                schedule={evaluation.taharah_schedule}
-                financials={evaluation.financial_analytics}
-                selectedBiz={selectedBiz}
-                memoSection={evaluation.memo_sections?.find(s => s.id === 4 || s.title?.toLowerCase().includes('islamic') || s.title?.toLowerCase().includes('taharah')) || evaluation.memo_sections?.[3]}
-              />
-
-              {/* Chapter 5: Interactive AI Inquiry Bar ("Ask Sanad") & Governance Sign-Off */}
-              <ChapterAskSanad
-                evaluation={evaluation}
-                selectedBiz={selectedBiz}
-                approvalWorkflow={evaluation.approval_workflow}
-                onApprove={handleApprove}
-                isApproving={isApproving}
-              />
-
-            </div>
           </>
         ) : (
-          /* Institutional Portfolio Workspace Directory */
+          /* Institutional Portfolio Workspace Directory & Multi-Source Intake */
           <div className="py-8 space-y-10 max-w-5xl mx-auto">
+            
             {/* Header */}
             <div className="text-center space-y-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-mono">
-                <Database className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{isBackendLive ? `PostgreSQL Database Online · ${businesses.length} Accounts Enrolled` : 'Autonomous Underwriting Engine Online'}</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-950/60 border border-blue-500/30 text-blue-300 text-xs font-mono">
+                <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                <span>Warba Bank Challenge · Track 1: AI-Powered Client Documentation</span>
               </div>
               <h2 className="font-editorial text-3xl lg:text-4xl text-white font-medium tracking-tight">
-                {lang === 'ar' ? 'المحفظة الائتمانية والتدقيق الآلي' : 'Corporate Credit Portfolio & Intake'}
+                {lang === 'ar' ? 'منظومة إنتاج الوثائق الائتمانية الآلية' : 'Autonomous Client Documentation & Multi-Source Intake'}
               </h2>
-              <p className="text-xs text-slate-400 leading-relaxed font-light max-w-xl mx-auto">
+              <p className="text-xs text-slate-400 leading-relaxed font-light max-w-2xl mx-auto">
                 {lang === 'ar' 
-                  ? 'اختر منشأة من قاعدة البيانات لفحص ملفها الائتماني والشرعي، أو اسحب مستندات جديدة للمطابقة الفورية.'
-                  : 'Select an active borrower from the credit database to review autonomous Shariah & credit synthesis, or upload a new dossier for real-time extraction.'}
+                  ? 'سحب فوري للبيانات من السجل التجاري (MOCI) وشبكة المعلومات الائتمانية (CiNet) والنظام المصرفي الداخلي لإنتاج مذكرات الائتمان وعروض المرابحة.'
+                  : 'Synthesize data across internal CRM records and external Kuwaiti registries to automatically produce bank-ready credit memoranda, indicative term sheets, and proactive relationship briefs.'}
               </p>
             </div>
 
-            {/* Directly Embedded Clean Batch Dropzone */}
+            {/* PILLAR 3: PROACTIVE FRONT-OFFICE RM RADAR (Turning Reactive into Proactive) */}
+            <ProactiveRmRadar
+              onSelectClientAndDoc={handleSelectClientAndDoc}
+              lang={lang}
+            />
+
+            {/* PILLAR 2: LIVE MULTI-SOURCE INGESTION PULLER (Pull by CR number without uploading) */}
+            <LiveSourcePuller
+              onSelectBusinessByCr={handleSelectBusinessByCr}
+              businesses={businesses}
+              isPulling={isIngesting}
+              lang={lang}
+            />
+
+            {/* Collapsible Manual Batch Dropzone (Alternative File Ingestion) */}
             <div className="rounded-2xl bg-white/[0.02] border border-white/[0.08] p-6 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                  <UploadCloud className="w-4 h-4 text-emerald-400" />
-                  {lang === 'ar' ? 'رفع ملفات جديدة للاستخراج الآلي' : 'Ingest New Multi-File Credit Dossier'}
+                  <UploadCloud className="w-4 h-4 text-slate-400" />
+                  {lang === 'ar' ? 'رفع ملفات إضافية يدوياً' : 'Optional: Manual PDF Dossier File Dropzone'}
                 </span>
-                <span className="text-[11px] text-slate-500 font-mono">PDF, TXT, DOCX, XLSX</span>
+                <button
+                  onClick={() => setShowBatchDropzone(!showBatchDropzone)}
+                  className="text-xs font-mono text-blue-400 hover:text-blue-300 flex items-center gap-1 cursor-pointer"
+                >
+                  <span>{showBatchDropzone ? 'Hide Dropzone' : 'Show Manual Dropzone'}</span>
+                  {showBatchDropzone ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
               </div>
-              <BatchUploadDropzone
-                onUploadFiles={handleBatchUpload}
-                isIngesting={isIngesting}
-                ingestStep={ingestStep}
-                ingestProgress={ingestProgress}
-                lang={lang}
-              />
+
+              {showBatchDropzone && (
+                <div className="pt-2 animate-in fade-in">
+                  <BatchUploadDropzone
+                    onUploadFiles={handleBatchUpload}
+                    isIngesting={isIngesting}
+                    ingestStep={ingestStep}
+                    ingestProgress={ingestProgress}
+                    lang={lang}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Borrowers in Database Directory */}
@@ -365,11 +469,11 @@ export default function App() {
                     <div 
                       key={biz.id}
                       onClick={() => handleSelectBiz(biz)}
-                      className="p-5 rounded-2xl bg-[#0E1424] hover:bg-[#12192D] border border-white/[0.08] hover:border-emerald-500/40 transition-all cursor-pointer group space-y-4 relative overflow-hidden shadow-lg"
+                      className="p-5 rounded-2xl bg-[#0E1424] hover:bg-[#12192D] border border-white/[0.08] hover:border-blue-500/40 transition-all cursor-pointer group space-y-4 relative overflow-hidden shadow-lg"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
-                          <p className="font-medium text-white group-hover:text-emerald-300 transition-colors text-sm">
+                          <p className="font-medium text-white group-hover:text-blue-300 transition-colors text-sm">
                             {displayName}
                           </p>
                           <p className="text-xs text-slate-400 font-light">
@@ -394,8 +498,8 @@ export default function App() {
                         <div className="font-mono text-[11px]">
                           Facility: <span className="text-white font-medium">KWD {(biz.facility_requested / 1000000).toFixed(2)}M</span>
                         </div>
-                        <span className="flex items-center gap-1.5 text-emerald-400 group-hover:translate-x-1 transition-transform font-medium">
-                          <span>{lang === 'ar' ? 'فتح الملف' : 'Audit Dossier'}</span>
+                        <span className="flex items-center gap-1.5 text-blue-400 group-hover:translate-x-1 transition-transform font-medium">
+                          <span>{lang === 'ar' ? 'فتح استوديو الوثائق' : 'Open Doc Studio'}</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </span>
                       </div>
@@ -415,13 +519,13 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span className="text-slate-400 font-medium">{t.bankName}</span>
             <span>·</span>
-            <span>{t.creditCore}</span>
+            <span>Track 1: AI-Powered Client Documentation</span>
             <span>·</span>
-            <span className="font-mono text-emerald-400/90 text-[11px]">{t.aaoifiStandard} 2026.1</span>
+            <span className="font-mono text-blue-400 text-[11px]">AAOIFI 2026.1 Compliant</span>
           </div>
           <div className="flex items-center gap-2 font-mono text-[11px] text-slate-500">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/80 inline-block" />
-            <span>{lang === 'ar' ? 'محرك التدقيق الآلي نشط' : 'Autonomous Engine Online'}</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+            <span>Autonomous Multi-Source Synthesizer Online</span>
           </div>
         </div>
       </footer>
