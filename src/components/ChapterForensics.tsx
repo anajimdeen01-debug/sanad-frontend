@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { Discrepancy } from '../types';
+import { Discrepancy, MemoSection } from '../types';
 import { AlertOctagon, AlertTriangle, ShieldCheck, FileText, CheckCircle2, Split } from 'lucide-react';
 
 interface ChapterForensicsProps {
   discrepancies: Discrepancy[];
+  memoSection?: MemoSection;
 }
 
 export const ChapterForensics: React.FC<ChapterForensicsProps> = ({
   discrepancies,
+  memoSection,
 }) => {
   const [selectedDiscIndex, setSelectedDiscIndex] = useState<number>(0);
 
@@ -36,11 +38,27 @@ export const ChapterForensics: React.FC<ChapterForensicsProps> = ({
       <div className="space-y-6">
         
         {/* Editorial Introduction */}
-        <p className="text-sm text-slate-300 leading-relaxed font-light max-w-3xl">
-          Sanad continuously circularizes facts across uploaded files, cross-referencing company declarations 
-          against the Ministry of Commerce & Industry (MOCI) Commercial Register, the Central Bank of Kuwait (CBK) Credit Bureau (Ci-Net) database, 
-          and audited income statements to detect unrecorded debentures, secret pledges, or revenue inflation.
-        </p>
+        {(() => {
+          const dynamicParagraphs = memoSection?.text ? memoSection.text.split('\n\n').filter(p => p.trim().length > 0) : null;
+          if (dynamicParagraphs && dynamicParagraphs.length > 0) {
+            return (
+              <div className="space-y-4 max-w-4xl">
+                {dynamicParagraphs.map((para, idx) => (
+                  <p key={idx} className={idx === 0 ? "text-base text-slate-200 leading-relaxed font-normal" : "text-sm text-slate-300 leading-relaxed font-light"}>
+                    {para}
+                  </p>
+                ))}
+              </div>
+            );
+          }
+          return (
+            <p className="text-sm text-slate-300 leading-relaxed font-light max-w-3xl">
+              Sanad continuously circularizes facts across uploaded files, cross-referencing company declarations 
+              against the Ministry of Commerce & Industry (MOCI) Commercial Register, the Central Bank of Kuwait (CBK) Credit Bureau (Ci-Net) database, 
+              and audited income statements to detect unrecorded debentures, secret pledges, or revenue inflation.
+            </p>
+          );
+        })()}
 
         {discrepancies.length === 0 ? (
           /* Clean Reconciled State */

@@ -279,11 +279,13 @@ export default function App() {
               <ChapterCovenants
                 scenarios={evaluation.stress_scenarios}
                 financials={evaluation.financial_analytics}
+                memoSection={evaluation.memo_sections?.find(s => s.id === 2 || s.title?.toLowerCase().includes('covenant') || s.title?.toLowerCase().includes('resilience')) || evaluation.memo_sections?.[1]}
               />
 
               {/* Chapter 3: Forensic Cross-Document Detective Findings */}
               <ChapterForensics
                 discrepancies={evaluation.discrepancies}
+                memoSection={evaluation.memo_sections?.find(s => s.id === 3 || s.title?.toLowerCase().includes('forensic') || s.title?.toLowerCase().includes('detective')) || evaluation.memo_sections?.[2]}
               />
 
               {/* Chapter 4: Islamic Structuring & Taharah/Zakat Mandate */}
@@ -291,6 +293,7 @@ export default function App() {
                 schedule={evaluation.taharah_schedule}
                 financials={evaluation.financial_analytics}
                 selectedBiz={selectedBiz}
+                memoSection={evaluation.memo_sections?.find(s => s.id === 4 || s.title?.toLowerCase().includes('islamic') || s.title?.toLowerCase().includes('taharah')) || evaluation.memo_sections?.[3]}
               />
 
               {/* Chapter 5: Interactive AI Inquiry Bar ("Ask Sanad") & Governance Sign-Off */}

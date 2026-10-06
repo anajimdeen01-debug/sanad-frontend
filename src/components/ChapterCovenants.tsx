@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StressScenario, FinancialAnalytics } from '../types';
+import { StressScenario, FinancialAnalytics, MemoSection } from '../types';
 import { 
   BarChart, 
   Bar, 
@@ -15,11 +15,13 @@ import { SlidersHorizontal, ArrowUpRight, Activity } from 'lucide-react';
 interface ChapterCovenantsProps {
   scenarios: StressScenario[];
   financials: FinancialAnalytics;
+  memoSection?: MemoSection;
 }
 
 export const ChapterCovenants: React.FC<ChapterCovenantsProps> = ({
   scenarios,
   financials,
+  memoSection,
 }) => {
   const [revenueShock, setRevenueShock] = useState<number>(-15);
   const [rateHikeBps, setRateHikeBps] = useState<number>(150);
@@ -93,16 +95,34 @@ export const ChapterCovenants: React.FC<ChapterCovenantsProps> = ({
         {/* Narrative & In-Text Interactive Sliders (7 cols) */}
         <div className="lg:col-span-7 space-y-6 text-sm text-slate-300 leading-relaxed font-light">
           
-          <p className="text-base text-slate-200 font-normal">
-            Debt Service Coverage Ratio (DSCR) represents the principal measure of borrower endurance against debt amortization obligations. 
-            Under verified operational conditions, the baseline coverage stands at <span className="font-mono text-white font-medium">{financials.baselineDscr}x</span>, 
-            providing a substantial safety margin above the <span className="font-mono text-white font-medium">{financials.covenantMinimumDscr}x</span> Warba Bank covenant threshold.
-          </p>
+          {(() => {
+            const dynamicParagraphs = memoSection?.text ? memoSection.text.split('\n\n').filter(p => p.trim().length > 0) : null;
+            if (dynamicParagraphs && dynamicParagraphs.length > 0) {
+              return (
+                <div className="space-y-4">
+                  {dynamicParagraphs.map((para, idx) => (
+                    <p key={idx} className={idx === 0 ? "text-base text-slate-200 font-normal leading-relaxed" : "leading-relaxed"}>
+                      {para}
+                    </p>
+                  ))}
+                </div>
+              );
+            }
+            return (
+              <>
+                <p className="text-base text-slate-200 font-normal">
+                  Debt Service Coverage Ratio (DSCR) represents the principal measure of borrower endurance against debt amortization obligations. 
+                  Under verified operational conditions, the baseline coverage stands at <span className="font-mono text-white font-medium">{financials.baselineDscr}x</span>, 
+                  providing a substantial safety margin above the <span className="font-mono text-white font-medium">{financials.covenantMinimumDscr}x</span> Warba Bank covenant threshold.
+                </p>
 
-          <p>
-            To evaluate resilience across commodity supply chain contractions and monetary tightening cycles, the engine tested three consecutive stress vectors: 
-            a 15% revenue volume slowdown, a 150 basis-point policy discount rate increase by the Central Bank of Kuwait, and a severe simultaneous contraction.
-          </p>
+                <p>
+                  To evaluate resilience across commodity supply chain contractions and monetary tightening cycles, the engine tested three consecutive stress vectors: 
+                  a 15% revenue volume slowdown, a 150 basis-point policy discount rate increase by the Central Bank of Kuwait, and a severe simultaneous contraction.
+                </p>
+              </>
+            );
+          })()}
 
           {/* Interactive Sensitivity In-Text Console */}
           <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">

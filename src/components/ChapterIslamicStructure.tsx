@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { TaharahSchedule, Business, FinancialAnalytics } from '../types';
+import { TaharahSchedule, Business, FinancialAnalytics, MemoSection } from '../types';
 import { ArrowRight, Coins, ShieldCheck, HeartHandshake, CheckCircle2 } from 'lucide-react';
 
 interface ChapterIslamicStructureProps {
   schedule: TaharahSchedule;
   financials: FinancialAnalytics;
   selectedBiz: Business;
+  memoSection?: MemoSection;
 }
 
 export const ChapterIslamicStructure: React.FC<ChapterIslamicStructureProps> = ({
   schedule,
   financials,
   selectedBiz,
+  memoSection,
 }) => {
   const [selectedCharity, setSelectedCharity] = useState<string>(schedule.designatedCharity);
 
@@ -37,12 +39,28 @@ export const ChapterIslamicStructure: React.FC<ChapterIslamicStructureProps> = (
       <div className="space-y-8">
         
         {/* Narrative Description */}
-        <p className="text-sm text-slate-300 leading-relaxed font-light max-w-3xl">
-          Islamic corporate facilities require strict segregation of prohibited earnings and transparent determination of enterprise Zakat. 
-          Under AAOIFI Standard No. 35, the zakatable base is computed using the net working capital proxy method. 
-          Furthermore, non-compliant income earned through conventional interest placements must undergo <em className="text-amber-300">Taharah (Purification)</em> 
-          by irrevocable donation to designated public welfare entities prior to facility closing.
-        </p>
+        {(() => {
+          const dynamicParagraphs = memoSection?.text ? memoSection.text.split('\n\n').filter(p => p.trim().length > 0) : null;
+          if (dynamicParagraphs && dynamicParagraphs.length > 0) {
+            return (
+              <div className="space-y-4 max-w-4xl">
+                {dynamicParagraphs.map((para, idx) => (
+                  <p key={idx} className={idx === 0 ? "text-base text-slate-200 leading-relaxed font-normal" : "text-sm text-slate-300 leading-relaxed font-light"}>
+                    {para}
+                  </p>
+                ))}
+              </div>
+            );
+          }
+          return (
+            <p className="text-sm text-slate-300 leading-relaxed font-light max-w-3xl">
+              Islamic corporate facilities require strict segregation of prohibited earnings and transparent determination of enterprise Zakat. 
+              Under AAOIFI Standard No. 35, the zakatable base is computed using the net working capital proxy method. 
+              Furthermore, non-compliant income earned through conventional interest placements must undergo <em className="text-amber-300">Taharah (Purification)</em> 
+              by irrevocable donation to designated public welfare entities prior to facility closing.
+            </p>
+          );
+        })()}
 
         {/* Clean Horizontal Step-Down Visual Flow */}
         <div className="rounded-2xl bg-white/[0.02] border border-white/[0.08] p-6 lg:p-8 space-y-6">

@@ -62,25 +62,75 @@ export const ChapterSynthesis: React.FC<ChapterSynthesisProps> = ({
         
         {/* Editorial Text (8 cols) */}
         <div className="lg:col-span-8 space-y-5 text-sm text-slate-300 leading-relaxed font-light">
-          
-          <p className="text-base text-slate-200 leading-relaxed font-normal">
-            Following automated multi-source ingestion of corporate ledgers and statutory audited statements, 
-            <strong className="text-white font-semibold"> {selectedBiz.name}</strong> has been evaluated under 
-            Warba Bank's institutional underwriting criteria and the Accounting and Auditing Organization for Islamic Financial Institutions (AAOIFI) Standards No. 21 and 35.
-          </p>
+          {(() => {
+            const chapterMemo = evaluation.memo_sections?.find(s => s.id === 1 || s.title?.toLowerCase().includes('shariah') || s.title?.toLowerCase().includes('synthesis')) || evaluation.memo_sections?.[0];
+            const dynamicParagraphs = chapterMemo?.text ? chapterMemo.text.split('\n\n').filter(p => p.trim().length > 0) : null;
 
-          <p>
-            The enterprise requests a financing envelope of <span className="font-mono font-medium text-white">KWD {financial_analytics.facilityRequestedKwd.toLocaleString()}</span> structured 
-            under a Commodity Murabaha / Tawarruq arrangement{' '}
-            <button
-              onClick={() => handleInlineCitation('SRC-001#c0')}
-              className="inline-flex items-center text-purple-400 hover:text-purple-300 font-mono text-xs underline underline-offset-2 mx-1 cursor-pointer"
-            >
-              [SRC-001]
-            </button>. 
-            The company's audited balance sheet establishes an asset base of <span className="font-mono text-white font-medium">KWD {evaluation.taharah_schedule.totalAssetsKwd.toLocaleString()}</span>, 
-            generating annual operating turnover of <span className="font-mono text-white font-medium">KWD {financial_analytics.annualRevenueKwd.toLocaleString()}</span> and an operating margin of <span className="font-mono text-white font-medium">{financial_analytics.operatingMarginPct}%</span>.
-          </p>
+            if (dynamicParagraphs && dynamicParagraphs.length > 0) {
+              return (
+                <div className="space-y-4">
+                  {dynamicParagraphs.map((para, idx) => (
+                    <p key={idx} className={idx === 0 ? "text-base text-slate-200 leading-relaxed font-normal" : "leading-relaxed"}>
+                      {para}
+                    </p>
+                  ))}
+                </div>
+              );
+            }
+
+            return (
+              <>
+                <p className="text-base text-slate-200 leading-relaxed font-normal">
+                  Following automated multi-source ingestion of corporate ledgers and statutory audited statements, 
+                  <strong className="text-white font-semibold"> {selectedBiz.name}</strong> has been evaluated under 
+                  Warba Bank's institutional underwriting criteria and the Accounting and Auditing Organization for Islamic Financial Institutions (AAOIFI) Standards No. 21 and 35.
+                </p>
+
+                <p>
+                  The enterprise requests a financing envelope of <span className="font-mono font-medium text-white">KWD {financial_analytics.facilityRequestedKwd.toLocaleString()}</span> structured 
+                  under a Commodity Murabaha / Tawarruq arrangement{' '}
+                  <button
+                    onClick={() => handleInlineCitation('SRC-001#c0')}
+                    className="inline-flex items-center text-purple-400 hover:text-purple-300 font-mono text-xs underline underline-offset-2 mx-1 cursor-pointer"
+                  >
+                    [SRC-001]
+                  </button>. 
+                  The company's audited balance sheet establishes an asset base of <span className="font-mono text-white font-medium">KWD {evaluation.taharah_schedule.totalAssetsKwd.toLocaleString()}</span>, 
+                  generating annual operating turnover of <span className="font-mono text-white font-medium">KWD {financial_analytics.annualRevenueKwd.toLocaleString()}</span> and an operating margin of <span className="font-mono text-white font-medium">{financial_analytics.operatingMarginPct}%</span>.
+                </p>
+
+                <p>
+                  Forensic analysis of treasury records confirms that non-permissible interest and non-halal income represents{' '}
+                  <span className={`font-mono font-medium ${scores.haramRevenueRatioPct > 5.0 ? 'text-rose-400 font-bold' : 'text-amber-400'}`}>
+                    {scores.haramRevenueRatioPct}%
+                  </span>{' '}
+                  of gross revenue,{' '}
+                  {scores.haramRevenueRatioPct > 5.0 ? (
+                    <span className="text-rose-400 font-semibold">
+                      EXCEEDING the statutory 5.0% maximum ceiling under AAOIFI Standard No. 21
+                    </span>
+                  ) : (
+                    <span>maintaining compliance within the statutory 5.0% threshold</span>
+                  )}{' '}
+                  <button
+                    onClick={() => handleInlineCitation('SRC-003#aaoifi')}
+                    className="inline-flex items-center text-purple-400 hover:text-purple-300 font-mono text-xs underline underline-offset-2 mx-1 cursor-pointer"
+                  >
+                    [AAOIFI-STD-21]
+                  </button>. 
+                  Total debt to assets stands at{' '}
+                  <span className={`font-mono font-medium ${scores.debtToAssetsPct > 30.0 ? 'text-rose-400 font-bold' : 'text-white'}`}>
+                    {scores.debtToAssetsPct}%
+                  </span>{' '}
+                  {scores.debtToAssetsPct > 30.0 ? (
+                    <span className="text-rose-400 font-semibold">(breaching the 30.0% AAOIFI ceiling)</span>
+                  ) : (
+                    <span>against the 30.0% ceiling</span>
+                  )}, and liquid assets represent <span className="font-mono text-white font-medium">{scores.liquidAssetsRatioPct}%</span> of total assets.
+                </p>
+              </>
+            );
+          })()}
 
           {/* Inline Highlight Block */}
           <div className="p-4 rounded-xl bg-white/[0.02] border-l-2 border-emerald-500/80 space-y-1.5 my-4">
@@ -92,36 +142,6 @@ export const ChapterSynthesis: React.FC<ChapterSynthesisProps> = ({
               "{scores.shariahBoardOpinion}"
             </p>
           </div>
-
-          <p>
-            Forensic analysis of treasury records confirms that non-permissible interest and non-halal income represents{' '}
-            <span className={`font-mono font-medium ${scores.haramRevenueRatioPct > 5.0 ? 'text-rose-400 font-bold' : 'text-amber-400'}`}>
-              {scores.haramRevenueRatioPct}%
-            </span>{' '}
-            of gross revenue,{' '}
-            {scores.haramRevenueRatioPct > 5.0 ? (
-              <span className="text-rose-400 font-semibold">
-                EXCEEDING the statutory 5.0% maximum ceiling under AAOIFI Standard No. 21
-              </span>
-            ) : (
-              <span>maintaining compliance within the statutory 5.0% threshold</span>
-            )}{' '}
-            <button
-              onClick={() => handleInlineCitation('SRC-003#aaoifi')}
-              className="inline-flex items-center text-purple-400 hover:text-purple-300 font-mono text-xs underline underline-offset-2 mx-1 cursor-pointer"
-            >
-              [AAOIFI-STD-21]
-            </button>. 
-            Total debt to assets stands at{' '}
-            <span className={`font-mono font-medium ${scores.debtToAssetsPct > 30.0 ? 'text-rose-400 font-bold' : 'text-white'}`}>
-              {scores.debtToAssetsPct}%
-            </span>{' '}
-            {scores.debtToAssetsPct > 30.0 ? (
-              <span className="text-rose-400 font-semibold">(breaching the 30.0% AAOIFI ceiling)</span>
-            ) : (
-              <span>against the 30.0% ceiling</span>
-            )}, and liquid assets represent <span className="font-mono text-white font-medium">{scores.liquidAssetsRatioPct}%</span> of total assets.
-          </p>
 
         </div>
 
