@@ -112,8 +112,11 @@ export const ChapterCovenants: React.FC<ChapterCovenantsProps> = ({
               <>
                 <p className="text-base text-slate-200 font-normal">
                   Debt Service Coverage Ratio (DSCR) represents the principal measure of borrower endurance against debt amortization obligations. 
-                  Under verified operational conditions, the baseline coverage stands at <span className="font-mono text-white font-medium">{financials.baselineDscr}x</span>, 
-                  providing a substantial safety margin above the <span className="font-mono text-white font-medium">{financials.covenantMinimumDscr}x</span> Warba Bank covenant threshold.
+                  Under verified operational conditions, the baseline coverage stands at <span className="font-mono text-white font-medium">{financials.baselineDscr}x</span>, {
+                    financials.baselineDscr >= financials.covenantMinimumDscr
+                      ? `providing a substantial safety margin above the ${financials.covenantMinimumDscr}x Warba Bank covenant threshold.`
+                      : `failing the ${financials.covenantMinimumDscr}x Warba Bank covenant threshold (deficit of ${(financials.covenantMinimumDscr - financials.baselineDscr).toFixed(2)}x) and indicating cash-flow default vulnerability.`
+                  }
                 </p>
 
                 <p>
