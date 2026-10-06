@@ -15,6 +15,7 @@ import { ChapterCovenants } from './components/ChapterCovenants';
 import { ChapterForensics } from './components/ChapterForensics';
 import { ChapterIslamicStructure } from './components/ChapterIslamicStructure';
 import { ChapterAskSanad } from './components/ChapterAskSanad';
+import { ConsolidatedRiskSummary } from './components/ConsolidatedRiskSummary';
 import { ClientDocumentationStudio } from './components/ClientDocumentationStudio';
 import { LiveSourcePuller } from './components/LiveSourcePuller';
 import { ProactiveRmRadar } from './components/ProactiveRmRadar';
@@ -35,7 +36,9 @@ import {
   FileText,
   Layers,
   Zap,
-  Sparkles
+  Sparkles,
+  MessageSquare,
+  ShieldCheck
 } from 'lucide-react';
 
 export default function App() {
@@ -45,8 +48,8 @@ export default function App() {
   const [evaluation, setEvaluation] = useState<EvaluationPayload | null>(null);
   const [auditTrail, setAuditTrail] = useState<AuditEvent[]>([]);
 
-  // Workspace Mode: Client Documentation Studio vs Underwriting vs Proactive
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'docs' | 'underwriting' | 'radar'>('docs');
+  // Workspace Mode: Client Documentation Studio vs Underwriting vs Ask Sanad vs Proactive
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'docs' | 'underwriting' | 'chat' | 'radar'>('docs');
 
   // Modals & Popovers
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
@@ -55,6 +58,7 @@ export default function App() {
   const [isBackendModalOpen, setIsBackendModalOpen] = useState<boolean>(false);
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
   const [showBatchDropzone, setShowBatchDropzone] = useState<boolean>(false);
+  const [showHomeRadar, setShowHomeRadar] = useState<boolean>(false);
 
   // Connection & Ingestion
   const [isBackendLive, setIsBackendLive] = useState<boolean>(false);
@@ -85,7 +89,8 @@ export default function App() {
     // RESTORE STATE ON BROWSER REFRESH (Preserve page location):
     const params = new URLSearchParams(window.location.search);
     const targetBizId = params.get('biz') || localStorage.getItem('sanad_active_biz_id');
-    const targetTab = (params.get('tab') as 'docs' | 'underwriting' | 'radar') || (localStorage.getItem('sanad_active_tab') as any);
+    const rawTab = params.get('tab') || localStorage.getItem('sanad_active_tab');
+    const targetTab = (rawTab === 'risk' ? 'underwriting' : rawTab) as 'docs' | 'underwriting' | 'chat' | 'radar';
 
     if (targetBizId && bizList.length > 0) {
       const cleanTarget = targetBizId.trim().toLowerCase();
@@ -97,7 +102,7 @@ export default function App() {
 
       if (matched) {
         setSelectedBiz(matched);
-        if (targetTab && ['docs', 'underwriting', 'radar'].includes(targetTab)) {
+        if (targetTab && ['docs', 'underwriting', 'chat', 'radar'].includes(targetTab)) {
           setActiveWorkspaceTab(targetTab);
         }
         const evalData = await apiService.getEvaluation(matched.id);
@@ -117,7 +122,7 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3200);
   };
 
-  const handleSelectBiz = async (biz: Business, preferredTab?: 'docs' | 'underwriting' | 'radar') => {
+  const handleSelectBiz = async (biz: Business, preferredTab?: 'docs' | 'underwriting' | 'chat' | 'radar') => {
     const tabToUse = preferredTab || activeWorkspaceTab || 'docs';
     setSelectedBiz(biz);
     localStorage.setItem('sanad_active_biz_id', biz.id);
@@ -129,7 +134,7 @@ export default function App() {
     setEvaluation(evalData);
   };
 
-  const switchWorkspaceTab = (tab: 'docs' | 'underwriting' | 'radar') => {
+  const switchWorkspaceTab = (tab: 'docs' | 'underwriting' | 'chat' | 'radar') => {
     setActiveWorkspaceTab(tab);
     localStorage.setItem('sanad_active_tab', tab);
     if (selectedBiz) {
@@ -306,11 +311,11 @@ export default function App() {
                 </span>
               </div>
 
-              {/* TRACK 1 WORKSPACE TABS */}
-              <div className="flex items-center gap-1.5 bg-white/[0.04] p-1 rounded-xl border border-white/10 text-xs">
+              {/* WORKSPACE TABS */}
+              <div className="flex items-center gap-1.5 bg-white/[0.04] p-1 rounded-xl border border-white/10 text-xs overflow-x-auto">
                 <button
                   onClick={() => switchWorkspaceTab('docs')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-colors cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-colors cursor-pointer whitespace-nowrap ${
                     activeWorkspaceTab === 'docs'
                       ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-900/30'
                       : 'text-slate-400 hover:text-white'
@@ -323,25 +328,37 @@ export default function App() {
 
                 <button
                   onClick={() => switchWorkspaceTab('underwriting')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-colors cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-colors cursor-pointer whitespace-nowrap ${
                     activeWorkspaceTab === 'underwriting'
-                      ? 'bg-slate-800 text-white font-semibold'
+                      ? 'bg-emerald-600 text-white font-semibold shadow-md shadow-emerald-900/30'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Underwriting Dossier</span>
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Risk & Shariah Summary</span>
+                </button>
+
+                <button
+                  onClick={() => switchWorkspaceTab('chat')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-colors cursor-pointer whitespace-nowrap ${
+                    activeWorkspaceTab === 'chat'
+                      ? 'bg-purple-600 text-white font-semibold shadow-md shadow-purple-900/30'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Ask Sanad Assistant</span>
                 </button>
 
                 <button
                   onClick={() => switchWorkspaceTab('radar')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-colors cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-colors cursor-pointer whitespace-nowrap ${
                     activeWorkspaceTab === 'radar'
                       ? 'bg-slate-800 text-white font-semibold'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
                   <span>Proactive RM Radar</span>
                 </button>
               </div>
@@ -358,70 +375,33 @@ export default function App() {
               </section>
             )}
 
-            {/* TAB 2: AUTONOMOUS UNDERWRITING DOSSIER (THE 5 DYNAMIC CHAPTERS) */}
+            {/* TAB 2: CONSOLIDATED RISK & SHARIAH SUMMARY (STREAMLINED EXECUTIVE VIEW) */}
             {activeWorkspaceTab === 'underwriting' && (
-              <div className="space-y-6 animate-in fade-in">
-                {/* PRIMARY AI VERDICT: Front-and-Center */}
-                <section aria-label={t.verdictSynthesisTitle}>
-                  <PrimaryAiVerdict
-                    evaluation={evaluation}
-                    selectedBiz={selectedBiz}
-                    approvalWorkflow={evaluation.approval_workflow}
-                    onApprove={handleApprove}
-                    isApproving={isApproving}
-                    onExportMemo={handleExportMemo}
-                    onOpenUploadModal={() => setIsUploadModalOpen(true)}
-                    lang={lang}
-                  />
-                </section>
-
-                {/* 2. Quiet Metric Ribbon */}
-                <section aria-label="Essential Figures">
-                  <MetricRibbon
-                    evaluation={evaluation}
-                    selectedBiz={selectedBiz}
-                    lang={lang}
-                  />
-                </section>
-
-                {/* The 5 Dynamic AI Living Chapters */}
-                <div className="space-y-0 divide-y-0">
-                  <ChapterSynthesis
-                    evaluation={evaluation}
-                    selectedBiz={selectedBiz}
-                    onCitationClick={cit => setActiveCitation(cit)}
-                  />
-
-                  <ChapterCovenants
-                    scenarios={evaluation.stress_scenarios}
-                    financials={evaluation.financial_analytics}
-                    memoSection={evaluation.memo_sections?.find(s => s.id === 2 || s.title?.toLowerCase().includes('covenant') || s.title?.toLowerCase().includes('resilience')) || evaluation.memo_sections?.[1]}
-                  />
-
-                  <ChapterForensics
-                    discrepancies={evaluation.discrepancies}
-                    memoSection={evaluation.memo_sections?.find(s => s.id === 3 || s.title?.toLowerCase().includes('forensic') || s.title?.toLowerCase().includes('detective')) || evaluation.memo_sections?.[2]}
-                  />
-
-                  <ChapterIslamicStructure
-                    schedule={evaluation.taharah_schedule}
-                    financials={evaluation.financial_analytics}
-                    selectedBiz={selectedBiz}
-                    memoSection={evaluation.memo_sections?.find(s => s.id === 4 || s.title?.toLowerCase().includes('islamic') || s.title?.toLowerCase().includes('taharah')) || evaluation.memo_sections?.[3]}
-                  />
-
-                  <ChapterAskSanad
-                    evaluation={evaluation}
-                    selectedBiz={selectedBiz}
-                    approvalWorkflow={evaluation.approval_workflow}
-                    onApprove={handleApprove}
-                    isApproving={isApproving}
-                  />
-                </div>
-              </div>
+              <section aria-label="Consolidated Risk & Shariah Summary" className="animate-in fade-in">
+                <ConsolidatedRiskSummary
+                  business={selectedBiz}
+                  evaluation={evaluation}
+                  onApprove={handleApprove}
+                  isApproving={isApproving}
+                  lang={lang}
+                />
+              </section>
             )}
 
-            {/* TAB 3: PROACTIVE RM RADAR */}
+            {/* TAB 3: ASK SANAD ASSISTANT (CONVERSATIONAL COPILOT & CITATIONS) */}
+            {activeWorkspaceTab === 'chat' && (
+              <section aria-label="Ask Sanad Assistant" className="animate-in fade-in">
+                <ChapterAskSanad
+                  evaluation={evaluation}
+                  selectedBiz={selectedBiz}
+                  approvalWorkflow={evaluation.approval_workflow}
+                  onApprove={handleApprove}
+                  isApproving={isApproving}
+                />
+              </section>
+            )}
+
+            {/* TAB 4: PROACTIVE RM RADAR */}
             {activeWorkspaceTab === 'radar' && (
               <section aria-label="Proactive Radar" className="animate-in fade-in">
                 <ProactiveRmRadar
@@ -452,13 +432,7 @@ export default function App() {
               </p>
             </div>
 
-            {/* PILLAR 3: PROACTIVE FRONT-OFFICE RM RADAR (Turning Reactive into Proactive) */}
-            <ProactiveRmRadar
-              onSelectClientAndDoc={handleSelectClientAndDoc}
-              lang={lang}
-            />
-
-            {/* PILLAR 2: LIVE MULTI-SOURCE INGESTION PULLER (Pull by CR number without uploading) */}
+            {/* PILLAR 1: LIVE MULTI-SOURCE INGESTION PULLER (Pull by CR number without uploading) */}
             <LiveSourcePuller
               onSelectBusinessByCr={handleSelectBusinessByCr}
               businesses={businesses}
@@ -466,8 +440,102 @@ export default function App() {
               lang={lang}
             />
 
+            {/* Borrowers in Database Directory */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-editorial text-xl text-white font-normal flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-blue-400" />
+                  {lang === 'ar' ? 'المنشآت المسجلة في قاعدة البيانات' : 'Active Corporate Accounts in Database'}
+                </h3>
+                <span className="text-xs font-mono text-slate-500">
+                  {businesses.length} {lang === 'ar' ? 'ملفات ائتمانية' : 'Dossiers Ready'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {businesses.map((biz) => {
+                  const displayName = lang === 'ar' && biz.nameArabic ? biz.nameArabic : biz.name;
+                  const isHighRisk = biz.riskRating === 'C' || biz.status === 'flagged';
+                  const isMediumRisk = biz.riskRating === 'BBB' || biz.riskRating === 'BB';
+                  return (
+                    <div 
+                      key={biz.id}
+                      onClick={() => handleSelectBiz(biz)}
+                      className="p-5 rounded-2xl bg-[#0E1424] hover:bg-[#12192D] border border-white/[0.08] hover:border-blue-500/40 transition-all cursor-pointer group space-y-4 relative overflow-hidden shadow-lg flex flex-col justify-between"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-0.5">
+                            <p className="font-medium text-white group-hover:text-blue-300 transition-colors text-sm line-clamp-1">
+                              {displayName}
+                            </p>
+                            <p className="text-xs text-slate-400 font-light line-clamp-1">
+                              {biz.sector}
+                            </p>
+                          </div>
+                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border shrink-0 ${
+                            isHighRisk
+                              ? 'bg-rose-950/60 border-rose-500/40 text-rose-300'
+                              : isMediumRisk
+                              ? 'bg-amber-950/60 border-amber-500/40 text-amber-300'
+                              : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
+                          }`}>
+                            Rating {biz.riskRating || 'A'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] font-mono text-slate-500">
+                          CR: {biz.cr_number}
+                        </p>
+                      </div>
+
+                      <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs text-slate-400">
+                        <div className="font-mono text-[11px]">
+                          Facility: <span className="text-white font-medium">KWD {(biz.facility_requested / 1000000).toFixed(2)}M</span>
+                        </div>
+                        <span className="flex items-center gap-1.5 text-blue-400 group-hover:translate-x-1 transition-transform font-medium">
+                          <span>{lang === 'ar' ? 'فتح' : 'Open'}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* PILLAR 2: PROACTIVE FRONT-OFFICE RM RADAR (Collapsible Portfolio Alerts) */}
+            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.08] p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-mono text-slate-300 uppercase tracking-wider">
+                    {lang === 'ar' ? 'رادار الفرص الاستباقية لمدير العلاقات' : 'Proactive RM Opportunities & Portfolio Alerts'}
+                  </span>
+                  <span className="text-[10px] bg-amber-950/60 border border-amber-500/30 text-amber-300 px-1.5 py-0.2 rounded font-mono">
+                    3 Signals
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowHomeRadar(!showHomeRadar)}
+                  className="text-xs font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
+                >
+                  <span>{showHomeRadar ? 'Collapse Radar' : 'Expand Radar'}</span>
+                  {showHomeRadar ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+
+              {showHomeRadar && (
+                <div className="pt-3 animate-in fade-in">
+                  <ProactiveRmRadar
+                    onSelectClientAndDoc={handleSelectClientAndDoc}
+                    lang={lang}
+                  />
+                </div>
+              )}
+            </div>
+
             {/* Collapsible Manual Batch Dropzone (Alternative File Ingestion) */}
-            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.08] p-6 space-y-3">
+            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.08] p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <UploadCloud className="w-4 h-4 text-slate-400" />
@@ -493,67 +561,6 @@ export default function App() {
                   />
                 </div>
               )}
-            </div>
-
-            {/* Borrowers in Database Directory */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-editorial text-xl text-white font-normal flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-blue-400" />
-                  {lang === 'ar' ? 'المنشآت المسجلة في قاعدة البيانات' : 'Active Corporate Accounts in Database'}
-                </h3>
-                <span className="text-xs font-mono text-slate-500">
-                  {businesses.length} {lang === 'ar' ? 'ملفات ائتمانية' : 'Dossiers Ready'}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {businesses.map((biz) => {
-                  const displayName = lang === 'ar' && biz.nameArabic ? biz.nameArabic : biz.name;
-                  const isHighRisk = biz.riskRating === 'C' || biz.status === 'flagged';
-                  const isMediumRisk = biz.riskRating === 'BBB' || biz.riskRating === 'BB';
-                  return (
-                    <div 
-                      key={biz.id}
-                      onClick={() => handleSelectBiz(biz)}
-                      className="p-5 rounded-2xl bg-[#0E1424] hover:bg-[#12192D] border border-white/[0.08] hover:border-blue-500/40 transition-all cursor-pointer group space-y-4 relative overflow-hidden shadow-lg"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          <p className="font-medium text-white group-hover:text-blue-300 transition-colors text-sm">
-                            {displayName}
-                          </p>
-                          <p className="text-xs text-slate-400 font-light">
-                            {biz.sector}
-                          </p>
-                          <p className="text-[11px] font-mono text-slate-500">
-                            CR: {biz.cr_number}
-                          </p>
-                        </div>
-                        <span className={`text-[11px] font-mono px-2 py-0.5 rounded-full border ${
-                          isHighRisk
-                            ? 'bg-rose-950/60 border-rose-500/40 text-rose-300'
-                            : isMediumRisk
-                            ? 'bg-amber-950/60 border-amber-500/40 text-amber-300'
-                            : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
-                        }`}>
-                          Rating {biz.riskRating || 'A'}
-                        </span>
-                      </div>
-
-                      <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs text-slate-400">
-                        <div className="font-mono text-[11px]">
-                          Facility: <span className="text-white font-medium">KWD {(biz.facility_requested / 1000000).toFixed(2)}M</span>
-                        </div>
-                        <span className="flex items-center gap-1.5 text-blue-400 group-hover:translate-x-1 transition-transform font-medium">
-                          <span>{lang === 'ar' ? 'فتح استوديو الوثائق' : 'Open Doc Studio'}</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
           </div>
         )}

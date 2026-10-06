@@ -8,7 +8,8 @@ import {
   Plus, 
   RefreshCw,
   FolderOpen,
-  Languages
+  Languages,
+  ShieldCheck
 } from 'lucide-react';
 import { Language, translations } from '../i18n/translations';
 
@@ -186,19 +187,17 @@ export const ExecutiveTopBar: React.FC<ExecutiveTopBarProps> = ({
           
           {/* Tamper-Proof Cryptographic Trust Seal */}
           {selectedBiz && (
-            <div 
+            <button 
               onClick={onOpenAuditModal}
-              className="hidden lg:flex items-center gap-2 text-[11px] font-mono text-slate-400 hover:text-slate-200 cursor-pointer transition-colors group"
-              title="Inspect SHA-256 Chained Integrity Log"
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-emerald-500/20 bg-emerald-950/30 hover:bg-emerald-950/50 text-[11px] font-mono text-emerald-300 hover:text-emerald-200 transition-colors cursor-pointer"
+              title={`Integrity Verified: ${sha256Hash}`}
             >
-              <span className="text-slate-500">SHA-256:</span>
-              <span className="text-slate-300 group-hover:text-emerald-300 transition-colors">
-                {truncatedHash}
-              </span>
-              <span className="text-[10px] text-emerald-400/90 bg-emerald-950/40 border border-emerald-500/20 px-1 rounded">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Audit Trail</span>
+              <span className="text-[10px] text-emerald-400 bg-emerald-900/50 px-1 py-0.2 rounded font-bold">
                 {t.verifiedBadge}
               </span>
-            </div>
+            </button>
           )}
 
           {/* Language Switcher Button (EN / العربية) */}
