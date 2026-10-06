@@ -2,6 +2,18 @@ import { Business, EvaluationPayload, AuditEvent } from '../types';
 
 export const INITIAL_BUSINESSES: Business[] = [
   {
+    id: 'biz_pearl',
+    name: 'Gulf Pearl Foods Trading W.L.L.',
+    nameArabic: 'شركة لؤلؤة الخليج لتجارة الأغذية ذ.م.م',
+    sector: 'Wholesale Food Distribution & Cold Chain Logistics',
+    cr_number: '451290-KW',
+    status: 'approved',
+    facility_requested: 1250000,
+    collateral_value: 2100000,
+    created_at: '2024-10-16T10:00:00Z',
+    riskRating: 'BBB+',
+  },
+  {
     id: 'biz_qabas',
     name: 'Qabas Trading & Contracting K.S.C.C.',
     nameArabic: 'شركة قبس للتجارة والمقاولات ش.م.ك.م',
@@ -64,6 +76,127 @@ export const INITIAL_BUSINESSES: Business[] = [
 ];
 
 export const MOCK_EVALUATIONS: Record<string, EvaluationPayload> = {
+  biz_pearl: {
+    eval_id: 'WRB-FORENSIC-2024-092',
+    biz_id: 'biz_pearl',
+    timestamp: '2024-10-16T10:00:00Z',
+    sha256Fingerprint: '9b7a4c102e8f5a6b3c4d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b',
+    merkleRoot: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b',
+    blockHeight: 148950,
+    scores: {
+      score: 88,
+      shariah_score: 88,
+      status: 'CONDITIONAL',
+      scoreDelta: '+14.2% top-line growth; BBB+ Rating Justified',
+      haramRevenueRatioPct: 0.38,
+      debtToAssetsPct: 22.40,
+      liquidAssetsRatioPct: 38.60,
+      prohibitedActivitiesFound: 1,
+      shariahBoardOpinion: 'CONDITIONAL APPROVAL: KWD 7,900 conventional interest income isolated under AAOIFI Standard No. 21. Remittance instructions drafted for Bait Al-Zakat prior to drawdown.',
+    },
+    financial_analytics: {
+      annualRevenueKwd: 8450000,
+      revenueGrowthPct: 14.2,
+      netIncomeKwd: 1120000,
+      ebitdaKwd: 1554800,
+      operatingMarginPct: 18.4,
+      ltvRatioPct: 59.5,
+      facilityRequestedKwd: 1250000,
+      collateralValueKwd: 2100000,
+      quarterlyRevenueSparkline: [1950000, 2050000, 2180000, 2270000],
+      annualDebtServiceKwd: 250000,
+      baselineDscr: 5.07,
+      covenantMinimumDscr: 1.25,
+    },
+    discrepancies: [
+      {
+        id: 'F-922',
+        title: 'Forensic Discrepancy (Ref #F-922): Undisclosed Performance Bond',
+        severity: 'high',
+        category: 'undisclosed_liability',
+        description: 'The primary credit application claims "Zero Contingent Liabilities." However, automated scan of the Ministry of Justice legal database discovered an active KWD 350,000 performance bond issued to a sister company, Pearl Logistics, which has a 30% common shareholding.',
+        sourceDocA: {
+          name: 'Credit Application Form 2024.pdf',
+          excerpt: 'Clause 5.2: Total contingent liabilities, guarantees, and performance bonds: KWD 0 (Zero).',
+          pageOrRef: 'Page 4, Clause 5.2',
+        },
+        sourceDocB: {
+          name: 'Ministry of Justice Legal Gazette & Guarantee Register.pdf',
+          excerpt: 'Active Guarantee #MOJ-BG-2023-881: KWD 350,000 corporate guarantee and performance bond issued on behalf of Pearl Logistics W.L.L. (CR #339102).',
+          pageOrRef: 'Gazette Volume 44, Entry 18',
+        },
+        financialImpactKwd: 350000,
+      },
+    ],
+    stress_scenarios: [
+      {
+        id: 'stress_shock_1',
+        name: 'Top-Line Revenue Shock (-25%)',
+        description: 'Applying a 25% shock to EBITDA (KWD 3.45M → KWD 2.58M) while maintaining debt obligations.',
+        revenueShockPct: -25,
+        rateHikeBps: 200,
+        resultingDscr: 3.80,
+        status: 'PASS',
+        debtServiceKwd: 250000,
+      },
+    ],
+    taharah_schedule: {
+      totalAssetsKwd: 5800000,
+      zakatableBaseProxyPct: 60.0,
+      zakatableBaseKwd: 3480000,
+      zakatRatePct: 2.577,
+      zakatPayableKwd: 89679.6,
+      prohibitedInterestIncomeKwd: 7900,
+      prohibitedIncomePct: 0.09,
+      taharahPurificationDueKwd: 7900,
+      designatedCharity: 'Bait Al-Zakat Kuwait',
+      aaoifiReference: 'AAOIFI Shariah Standard No. 21 (Financial Papers & Purification)',
+    },
+    memo_sections: [
+      {
+        id: 1,
+        title: 'I. EXECUTIVE SYNTHESIS',
+        content: 'I have completed a deep-tissue forensic audit of the Gulf Pearl Foods credit dossier. My analysis moves beyond surface-level ratios to examine the underlying structural integrity of the borrower. My core finding is that the borrower is fundamentally profitable, with a 14.2% top-line growth rate that is substantiated by verified VAT filings and export customs data.',
+        citations: ['SRC-001#c0'],
+      },
+      {
+        id: 2,
+        title: 'II. FINANCIAL & CASH FLOW FORENSICS',
+        content: 'Upon examining the 2023 audited financials against live transaction telemetry from the Ministry of Finance, I have reconstructed the cash-conversion cycle. The borrower demonstrates a Days Sales Outstanding (DSO) of 42 days, which is significantly better than the industry average of 58 days.',
+        citations: ['SRC-002#dso'],
+      },
+      {
+        id: 3,
+        title: 'III. CONFLICT & RISK ANOMALIES',
+        content: 'My cross-document verification engine identified a Forensic Discrepancy (Ref #F-922). The primary credit application claims "Zero Contingent Liabilities." However, my automated scan of the Ministry of Justice legal database discovered an active KWD 350,000 performance bond issued to a sister company, Pearl Logistics, which has a 30% common shareholding.',
+        citations: ['SRC-003#f922'],
+      },
+      {
+        id: 4,
+        title: 'IV. SHARIAH INTEGRITY & TAHARAH',
+        content: 'I have screened every line item of the "Other Income" schedule for FY2023. I detected KWD 7,900 in interest income originating from a conventional fixed deposit account held with a non-Islamic regional bank. This is non-compliant under AAOIFI Standard No. 21. I have already calculated the exact purification (Taharah) amount and drafted the necessary remittance instructions for the borrower to execute through Bait Al-Zakat.',
+        citations: ['SRC-004#taharah'],
+      },
+    ],
+    citations: {},
+    approval_workflow: {
+      creditAnalyst: { approved: true, name: 'Nasser Hassan', timestamp: '10 Oct, 11:20 AM' },
+      scuReviewer: { approved: false, name: 'Dr. Tariq Al-Otaibi' },
+      committeeSanction: { approved: false, name: 'Corporate Credit Committee' },
+    },
+    verdict: {
+      status: 'SANCTION_APPROVED_CONDITIONAL',
+      title: 'MURABAHA FACILITY SANCTION RECOMMENDATION · KWD 1.25M · BBB+ RATING',
+      rationale: 'I recommend sanctioning the Murabaha facility at KWD 1.25M, subject to the forensic remediation of the undisclosed logistics guarantee and verified Taharah purification. The borrower\'s core cash velocity is superior to its peers, justifying a BBB+ rating.',
+      keyConditions: [
+        'Mandatory Disclosure Clause inserted into facility agreement regarding KWD 350,000 performance bond (Ref #F-922)',
+        'Remittance of KWD 7,900 to Bait Al-Zakat under AAOIFI Standard No. 21 prior to initial drawdown',
+        'Covenant maintenance floor: Minimum DSCR of 1.25x'
+      ],
+      underwritingConfidencePct: 98.2,
+      extractedFromDocsCount: 142,
+    },
+  },
   biz_qabas: {
     eval_id: 'eval_qabas_2026',
     biz_id: 'biz_qabas',
