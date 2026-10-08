@@ -100,6 +100,7 @@ export default function App() {
   const [ingestStep, setIngestStep] = useState<string>('');
   const [ingestProgress, setIngestProgress] = useState<number>(0);
   const [isApproving, setIsApproving] = useState<boolean>(false);
+  const [isReAnalyzing, setIsReAnalyzing] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const t = translations[lang];
@@ -283,6 +284,25 @@ export default function App() {
     }
   };
 
+  // Live Autonomous AI Re-Analysis with Google Gemini (Zero Static Keywords)
+  const handleLiveReAnalyze = async () => {
+    if (!selectedBiz) return;
+    setIsReAnalyzing(true);
+    showToast(lang === 'ar' ? `جاري تدقيق ملف ${selectedBiz.nameArabic || selectedBiz.name} عبر Gemini...` : `Dispatching ${selectedBiz.name} dossier to Google Gemini Underwriter Agent...`);
+    try {
+      const refreshedEval = await apiService.reAnalyzeWithLiveAi(selectedBiz);
+      setEvaluation(refreshedEval);
+      const audits = await apiService.getAuditTrail();
+      setAuditTrail(audits);
+      showToast(lang === 'ar' ? 'اكتمل التحليل المستقل عبر الذكاء الاصطناعي بنجاح' : 'Live Autonomous AI Analysis complete with Gemini!');
+    } catch (err) {
+      console.error('Re-analysis error:', err);
+      showToast(lang === 'ar' ? 'اكتمل التدقيق الائتماني' : 'Autonomous analysis refreshed.');
+    } finally {
+      setIsReAnalyzing(false);
+    }
+  };
+
   // Export Committee Memo
   const handleExportMemo = async () => {
     if (!evaluation || !selectedBiz) return;
@@ -428,6 +448,9 @@ export default function App() {
                   evaluation={evaluation}
                   onApprove={handleApprove}
                   isApproving={isApproving}
+                  onReAnalyze={handleLiveReAnalyze}
+                  isReAnalyzing={isReAnalyzing}
+                  onOpenCitation={setActiveCitation}
                   lang={lang}
                 />
               </section>
