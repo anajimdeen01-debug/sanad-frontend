@@ -13,7 +13,25 @@ const GEMINI_API_KEY = import.meta.env?.VITE_GEMINI_API_KEY || (typeof window !=
 const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-pro-latest'];
 
 const GEMINI_SYSTEM_PROMPT = `You are the Senior Credit Underwriting Director and Shariah Supervisory Board Officer at Warba Bank (Kuwait).
-Your mission is to rigorously analyze all provided corporate credit documents (audited financial statements, Ministry of Commerce (MOCI) registries, Central Bank of Kuwait (CBK) / CiNet credit reports, and asset appraisals).
+Your mission is to rigorously analyze all provided documents (audited financial statements, Ministry of Commerce (MOCI) registries, Central Bank of Kuwait (CBK) / CiNet credit reports, asset appraisals, or identify non-credit files such as resumes/CVs).
+
+STEP 0: MANDATORY DOCUMENT VALIDITY & CLASSIFICATION AUDIT (CRITICAL):
+- Carefully inspect the ingested documents to determine whether they represent a valid corporate credit financing pack (Audited Financials, MOCI Commercial License, Articles of Association, CiNet report, Facility Application).
+- If the uploaded document is an individual Curriculum Vitae (CV), Resume, personal bio, or non-commercial application:
+  1. DO NOT HALLUCINATE, INVENT, OR FABRICATE financial numbers, commercial balance sheets, real estate collateral, or debt service figures.
+  2. Clearly state that the document is an Individual Applicant Resume / CV, NOT an eligible corporate borrowing dossier.
+  3. Set entity name to the individual applicant name. Set "cr_number" to "CR-NON-COMMERCIAL-DEFICIENT" or "UNVERIFIED-NO-MOCI".
+  4. Set "facility_requested_kwd" to 0 (or null), "collateral_value_kwd" to 0 (or null).
+  5. Set "risk_rating" to "DEFICIENT_NON_CREDIT" or "HR-UNQUALIFIED".
+  6. Set "verdict.status" to "FACILITY_SUSPENDED".
+  7. Set "verdict.title" to "DOCUMENT INELIGIBILITY: NON-COMMERCIAL CV / RESUME — FACILITY SUSPENDED".
+  8. In "verdict.analyst_rationale", clearly explain in authoritative, clean credit banking prose that the submitted file is an individual curriculum vitae without corporate balance sheets, audited P&L, MOCI commercial registration, or pledged collateral. State clearly: "Corporate credit facility cannot be underwritten or approved without audited financial statements and registered commercial collateral."
+  9. In "key_conditions", list the exact mandatory documentation required: ["Submission of audited financial statements certified by a licensed auditor", "Active Ministry of Commerce and Industry (MOCI) commercial registration", "Corporate board resolution approving the financing facility", "Central Bank of Kuwait (CBK) CiNet credit bureau disclosure", "Title deed appraisal for eligible Shariah-compliant collateral"].
+  10. Set financial values (revenue, net income, ebitda, debt service) to 0. Set DSCR to 0.00. Set Shariah score to 0 or 40 (Deficient).
+
+STRICT CLEAN FORMATTING RULE (NO RAW MARKDOWN ARTIFACTS):
+- In "analyst_rationale", "verdict.title", "key_conditions", and all "memo_chapters", write in clean, human-readable prose.
+- DO NOT use raw markdown formatting symbols like asterisks (** or *), hash headers (#, ##), backticks (\`), or raw HTML in any text field. Use clean punctuation and professional phrasing.
 
 You must act as a real human credit officer:
 1. Read the full text of all documents carefully.
@@ -28,7 +46,7 @@ You must act as a real human credit officer:
 5. Synthesize a definitive credit sanction decision:
    - "SANCTION_APPROVED" (Prime credit, score >= 80, DSCR >= 1.25x, clean records)
    - "CONDITIONAL_SANCTION" (Acceptable cash flow, minor covenants or Taharah purification required before drawdown)
-   - "FACILITY_SUSPENDED" (Severe Shariah non-compliance > 5% haram or > 30% debt, cash flow deficit DSCR < 1.0x, or undisclosed registered liens)
+   - "FACILITY_SUSPENDED" (Non-commercial document, severe Shariah non-compliance > 5% haram or > 30% debt, cash flow deficit DSCR < 1.0x, or undisclosed registered liens)
 
 CRITICAL INSTRUCTION FOR MEMO CHAPTERS (ZERO 4-LINE SUMMARIES):
 - Each of the 4 "memo_chapters" must be an exhaustive, multi-paragraph, professional credit assessment (3 to 6 comprehensive paragraphs per chapter, min 250 words per chapter).
@@ -954,24 +972,27 @@ EXECUTE UNFETTERED DYNAMIC CREDIT AUDIT & AAOIFI EVALUATION (ZERO STATIC WORDS):
       const verd = aiData.verdict || {};
       const shariahScore = sc.shariah_score ?? 65;
 
-      const bizName = ent.name || files[0]?.name.replace(/\.[^/.]+$/, '').replace(/_/g, ' ') || 'Corporate Borrower';
-      const bizNameArabic = ent.name_arabic || '';
-      const sector = ent.sector || 'Commercial & Trade';
-      const cr = ent.cr_number || `CR-${Math.floor(100000 + Math.random() * 900000)}-KW`;
-      const fac = ent.facility_requested_kwd || 2500000;
-      const col = ent.collateral_value_kwd || 3500000;
+      // Detect if the document is a non-commercial file (CV, Resume, personal profile)
+      const isCvOrNonCommercial = 
+        files.some(f => /cv|resume|curriculum|biodata/i.test(f.name)) ||
+        /cv|resume|curriculum|personal profile|applicant/i.test(bizName) ||
+        verd.status === 'FACILITY_SUSPENDED' && /cv|resume|non-commercial|ineligib/i.test(verd.title || '');
+
+      const fac = isCvOrNonCommercial ? (ent.facility_requested_kwd || 0) : (ent.facility_requested_kwd || 2500000);
+      const col = isCvOrNonCommercial ? (ent.collateral_value_kwd || 0) : (ent.collateral_value_kwd || 3500000);
+      const computedLtv = col > 0 ? Number(((fac / col) * 100).toFixed(1)) : 0;
 
       const autoBiz: Business = {
         id: `biz_${Date.now()}`,
-        name: bizName,
+        name: isCvOrNonCommercial ? (ent.name || files[0]?.name.replace(/\.[^/.]+$/, '').replace(/_/g, ' ') || 'Applicant Dossier') : bizName,
         nameArabic: bizNameArabic,
-        sector,
-        cr_number: cr,
-        status: sc.status === 'COMPLIANT' ? 'approved' : sc.status === 'CONDITIONAL' ? 'under_review' : 'flagged',
+        sector: isCvOrNonCommercial ? (ent.sector || 'Individual Professional (Non-Corporate)') : sector,
+        cr_number: isCvOrNonCommercial ? (ent.cr_number || 'UNVERIFIED-NO-MOCI') : cr,
+        status: isCvOrNonCommercial ? 'flagged' : (sc.status === 'COMPLIANT' ? 'approved' : sc.status === 'CONDITIONAL' ? 'under_review' : 'flagged'),
         facility_requested: fac,
         collateral_value: col,
         created_at: new Date().toISOString(),
-        riskRating: ent.risk_rating || (shariahScore >= 80 ? 'A+' : shariahScore >= 60 ? 'BBB' : 'BB'),
+        riskRating: isCvOrNonCommercial ? 'DEFICIENT_NON_CREDIT' : (ent.risk_rating || (shariahScore >= 80 ? 'A+' : shariahScore >= 60 ? 'BBB' : 'BB')),
       };
 
       const hash = await sha256(`${autoBiz.id}-${fac}-${col}-${Date.now()}`);
@@ -983,22 +1004,44 @@ EXECUTE UNFETTERED DYNAMIC CREDIT AUDIT & AAOIFI EVALUATION (ZERO STATIC WORDS):
         return {
           id: d.id || `disc_${idx + 1}`,
           title: d.title || 'Forensic Discrepancy',
-          severity: (d.severity?.toLowerCase() || 'medium') as any,
-          category: d.category || 'undisclosed_liability',
+          severity: (d.severity?.toLowerCase() || 'critical') as any,
+          category: d.category || 'document_ineligibility',
           description: d.description || '',
           sourceDocA: {
-            name: srcA.name || 'Audited_Financials_FY2025.pdf',
-            pageOrRef: srcA.page_or_ref || srcA.page || `Page ${idx * 4 + 4}, Note ${idx + 12}`,
-            excerpt: srcA.excerpt || d.description || 'Verified declared clause in corporate filing.'
+            name: srcA.name || files[0]?.name || 'Applicant_Dossier.pdf',
+            pageOrRef: srcA.page_or_ref || srcA.page || 'Page 1',
+            excerpt: srcA.excerpt || d.description || 'Verified applicant record.'
           },
           sourceDocB: {
-            name: srcB.name || 'CBK_Credit_Bureau_Report.pdf',
-            pageOrRef: srcB.page_or_ref || srcB.page || `Page ${idx * 2 + 2}, Schedule ${idx + 1}`,
-            excerpt: srcB.excerpt || d.description || 'Contradicting registry record.'
+            name: srcB.name || 'MOCI_Commercial_Registry_Gazette.pdf',
+            pageOrRef: srcB.page_or_ref || srcB.page || 'Central Registry',
+            excerpt: srcB.excerpt || d.description || 'No registered corporate legal entity found.'
           },
-          financialImpactKwd: d.exposure_kwd
+          financialImpactKwd: d.exposure_kwd || 0
         };
       });
+
+      // If it's a CV and no discrepancy was added by Gemini, add the explicit document deficiency flag
+      if (isCvOrNonCommercial && mappedDiscrepancies.length === 0) {
+        mappedDiscrepancies.push({
+          id: 'disc_doc_deficiency',
+          title: 'Document Ineligibility: Individual CV / Non-Corporate Filing',
+          severity: 'critical',
+          category: 'document_ineligibility',
+          description: 'The uploaded file is an individual curriculum vitae / resume. Under Central Bank of Kuwait (CBK) and Warba Bank underwriting policies, corporate facilities require audited financial statements, certified MOCI commercial registration, and registered corporate collateral.',
+          sourceDocA: {
+            name: files[0]?.name || 'Applicant_CV.pdf',
+            pageOrRef: 'Page 1',
+            excerpt: 'Curriculum Vitae / Personal Resume submitted in lieu of corporate borrowing pack.'
+          },
+          sourceDocB: {
+            name: 'CBK_Corporate_Credit_Underwriting_Directive.pdf',
+            pageOrRef: 'Module 4, §1.1',
+            excerpt: 'All commercial facilities must be supported by minimum 2 years audited balance sheets and active MOCI registration.'
+          },
+          financialImpactKwd: 0
+        });
+      }
 
       const rawCitations = aiData.citations || [];
       const mappedCitations: Record<string, Citation> = {};
@@ -1026,26 +1069,6 @@ EXECUTE UNFETTERED DYNAMIC CREDIT AUDIT & AAOIFI EVALUATION (ZERO STATIC WORDS):
           };
         });
       }
-      if (!mappedCitations['SRC-001#c0']) {
-        mappedCitations['SRC-001#c0'] = {
-          id: 'SRC-001#c0',
-          code: 'SRC-001#c0',
-          docName: files[0]?.name || 'Facility_Request_Application.pdf',
-          page: 'Page 2, §1.2 (Facility Terms)',
-          excerpt: `Formal application for KWD ${fac.toLocaleString()} Commodity Murabaha facility with proposed collateral cover of KWD ${col.toLocaleString()}.`,
-          verifiedHash: hash.substring(0, 16)
-        };
-      }
-      if (!mappedCitations['SRC-003#aaoifi']) {
-        mappedCitations['SRC-003#aaoifi'] = {
-          id: 'SRC-003#aaoifi',
-          code: 'SRC-003#aaoifi',
-          docName: 'AAOIFI_Financial_Standard_No_21.pdf',
-          page: 'Standard 21, Section 3/4/2 (Financial Ratios)',
-          excerpt: 'Impermissible revenue ceiling capped at 5.0% of total revenue. Total conventional debt capped at 30.0% of total assets.',
-          verifiedHash: 'aaoifi-std-21-verified'
-        };
-      }
 
       const mappedScenarios = (aiData.stress_scenarios || []).map((s: any, idx: number) => ({
         id: `scen_${idx + 1}`,
@@ -1053,17 +1076,26 @@ EXECUTE UNFETTERED DYNAMIC CREDIT AUDIT & AAOIFI EVALUATION (ZERO STATIC WORDS):
         description: s.description || '',
         revenueShockPct: s.revenue_shock_pct ?? 0,
         rateHikeBps: s.rate_hike_bps ?? 0,
-        resultingDscr: s.resulting_dscr ?? fin.baseline_dscr ?? 1.25,
-        status: s.status || (s.resulting_dscr >= 1.25 ? 'PASS' : 'BREACH'),
-        debtServiceKwd: fin.annual_debt_service_kwd
+        resultingDscr: s.resulting_dscr ?? (isCvOrNonCommercial ? 0 : (fin.baseline_dscr ?? 1.25)),
+        status: isCvOrNonCommercial ? 'BREACH' : (s.status || (s.resulting_dscr >= 1.25 ? 'PASS' : 'BREACH')),
+        debtServiceKwd: fin.annual_debt_service_kwd || 0
       }));
 
       const memoChapters = (aiData.memo_chapters || []).map((ch: any) => ({
+        id: ch.chapter_number,
         title: ch.title || `Chapter ${ch.chapter_number}`,
+        content: ch.content || '',
         text: ch.content || ''
       }));
 
       const taharah = aiData.taharah_schedule || {};
+
+      const finalRevenue = isCvOrNonCommercial ? (fin.annual_revenue_kwd || 0) : (fin.annual_revenue_kwd || 10000000);
+      const finalNetIncome = isCvOrNonCommercial ? (fin.net_income_kwd || 0) : (fin.net_income_kwd || 1500000);
+      const finalEbitda = isCvOrNonCommercial ? (fin.ebitda_kwd || 0) : (fin.ebitda_kwd || 2500000);
+      const finalDebtService = isCvOrNonCommercial ? (fin.annual_debt_service_kwd || 0) : (fin.annual_debt_service_kwd || 1000000);
+      const finalDscr = isCvOrNonCommercial ? (fin.baseline_dscr || 0) : (fin.baseline_dscr || 1.25);
+      const finalAssets = isCvOrNonCommercial ? (taharah.total_assets_kwd || 0) : (taharah.total_assets_kwd || 15000000);
 
       const evalPayload: EvaluationPayload = {
         eval_id: `eval_${autoBiz.id}_${Date.now()}`,
@@ -1074,44 +1106,44 @@ EXECUTE UNFETTERED DYNAMIC CREDIT AUDIT & AAOIFI EVALUATION (ZERO STATIC WORDS):
         merkleRoot: merkle,
         blockHeight: 148950,
         scores: {
-          score: shariahScore,
-          shariah_score: shariahScore,
-          status: sc.status || (shariahScore >= 80 ? 'COMPLIANT' : shariahScore >= 60 ? 'CONDITIONAL' : 'NON_COMPLIANT'),
-          scoreDelta: sc.score_delta_explain || `${shariahScore >= 80 ? '+8 pts AAOIFI verified' : '-36 pts AAOIFI breaches'}`,
+          score: isCvOrNonCommercial ? (sc.shariah_score ?? 0) : shariahScore,
+          shariah_score: isCvOrNonCommercial ? (sc.shariah_score ?? 0) : shariahScore,
+          status: isCvOrNonCommercial ? 'NON_COMPLIANT' : (sc.status || (shariahScore >= 80 ? 'COMPLIANT' : shariahScore >= 60 ? 'CONDITIONAL' : 'NON_COMPLIANT')),
+          scoreDelta: sc.score_delta_explain || (isCvOrNonCommercial ? 'Deficient: Non-commercial CV submission' : (shariahScore >= 80 ? '+8 pts AAOIFI verified' : '-36 pts AAOIFI breaches')),
           haramRevenueRatioPct: sc.haram_revenue_ratio_pct ?? 0,
           debtToAssetsPct: sc.debt_to_assets_pct ?? 0,
-          liquidAssetsRatioPct: sc.liquid_assets_ratio_pct ?? 25.0,
-          prohibitedActivitiesFound: sc.status === 'NON_COMPLIANT' ? 1 : 0,
-          shariahBoardOpinion: sc.shariah_board_opinion || verd.analyst_rationale || '',
+          liquidAssetsRatioPct: sc.liquid_assets_ratio_pct ?? (isCvOrNonCommercial ? 0 : 25.0),
+          prohibitedActivitiesFound: isCvOrNonCommercial ? 1 : (sc.status === 'NON_COMPLIANT' ? 1 : 0),
+          shariahBoardOpinion: sc.shariah_board_opinion || verd.analyst_rationale || (isCvOrNonCommercial ? 'Ineligible: Individual resume lacks Shariah-screenable corporate balance sheet or commercial registration.' : ''),
         },
         financial_analytics: {
-          annualRevenueKwd: fin.annual_revenue_kwd || 10000000,
-          revenueGrowthPct: fin.revenue_growth_pct || 5.0,
-          netIncomeKwd: fin.net_income_kwd || 1500000,
-          ebitdaKwd: fin.ebitda_kwd || 2500000,
-          operatingMarginPct: fin.operating_margin_pct || 25.0,
-          ltvRatioPct: fin.ltv_ratio_pct || Number(((fac / col) * 100).toFixed(1)),
+          annualRevenueKwd: finalRevenue,
+          revenueGrowthPct: fin.revenue_growth_pct || 0,
+          netIncomeKwd: finalNetIncome,
+          ebitdaKwd: finalEbitda,
+          operatingMarginPct: fin.operating_margin_pct || 0,
+          ltvRatioPct: fin.ltv_ratio_pct || computedLtv,
           facilityRequestedKwd: fac,
           collateralValueKwd: col,
           quarterlyRevenueSparkline: [
-            Math.round((fin.annual_revenue_kwd || 10000000) * 0.22),
-            Math.round((fin.annual_revenue_kwd || 10000000) * 0.24),
-            Math.round((fin.annual_revenue_kwd || 10000000) * 0.26),
-            Math.round((fin.annual_revenue_kwd || 10000000) * 0.28),
+            Math.round(finalRevenue * 0.22),
+            Math.round(finalRevenue * 0.24),
+            Math.round(finalRevenue * 0.26),
+            Math.round(finalRevenue * 0.28),
           ],
-          annualDebtServiceKwd: fin.annual_debt_service_kwd || 1000000,
-          baselineDscr: fin.baseline_dscr || 1.25,
+          annualDebtServiceKwd: finalDebtService,
+          baselineDscr: finalDscr,
           covenantMinimumDscr: fin.covenant_min_dscr || 1.25,
         },
         discrepancies: mappedDiscrepancies,
         shariah_flags: [],
         stress_scenarios: mappedScenarios,
         taharah_schedule: {
-          totalAssetsKwd: taharah.total_assets_kwd || 15000000,
+          totalAssetsKwd: finalAssets,
           zakatableBaseProxyPct: 60,
-          zakatableBaseKwd: Math.round((taharah.total_assets_kwd || 15000000) * 0.6),
+          zakatableBaseKwd: Math.round(finalAssets * 0.6),
           zakatRatePct: 2.5,
-          zakatPayableKwd: taharah.zakat_payable_kwd || Math.round((taharah.total_assets_kwd || 15000000) * 0.6 * 0.025),
+          zakatPayableKwd: taharah.zakat_payable_kwd || Math.round(finalAssets * 0.6 * 0.025),
           prohibitedInterestIncomeKwd: taharah.prohibited_interest_income_kwd || 0,
           prohibitedIncomePct: sc.haram_revenue_ratio_pct || 0,
           taharahPurificationDueKwd: taharah.purification_due_kwd || 0,
@@ -1126,10 +1158,22 @@ EXECUTE UNFETTERED DYNAMIC CREDIT AUDIT & AAOIFI EVALUATION (ZERO STATIC WORDS):
           committeeSanction: { approved: false, name: 'Corporate Credit Committee' },
         },
         verdict: {
-          status: verd.status || (shariahScore >= 80 ? 'SANCTION_APPROVED' : shariahScore >= 60 ? 'CONDITIONAL_SANCTION' : 'FACILITY_SUSPENDED'),
-          title: verd.title || 'AUTONOMOUS CREDIT UNDERWRITING VERDICT',
-          rationale: verd.analyst_rationale || 'Autonomous multi-document ingestion and credit evaluation synthesized by Gemini.',
-          keyConditions: verd.key_conditions || ['Perfection of registered collateral'],
+          status: isCvOrNonCommercial ? 'FACILITY_SUSPENDED' : (verd.status || (shariahScore >= 80 ? 'SANCTION_APPROVED' : shariahScore >= 60 ? 'CONDITIONAL_SANCTION' : 'FACILITY_SUSPENDED')),
+          title: isCvOrNonCommercial 
+            ? 'DOCUMENT INELIGIBILITY: INDIVIDUAL RESUME / CV — FACILITY SUSPENDED' 
+            : (verd.title || 'AUTONOMOUS CREDIT UNDERWRITING VERDICT'),
+          rationale: isCvOrNonCommercial
+            ? (verd.analyst_rationale || 'The uploaded file is an individual curriculum vitae / resume. Under Warba Bank Institutional Banking policies, corporate credit facilities cannot be underwritten or approved without audited financial statements certified by a licensed auditor, an active Ministry of Commerce and Industry (MOCI) commercial license, and registered commercial collateral.')
+            : (verd.analyst_rationale || 'Autonomous multi-document ingestion and credit evaluation synthesized by Gemini.'),
+          keyConditions: isCvOrNonCommercial
+            ? [
+                'Submission of audited financial statements certified by a licensed statutory auditor (minimum 2 years)',
+                'Provision of active Ministry of Commerce and Industry (MOCI) Commercial Registration certificate',
+                'Formal corporate board resolution authorizing credit facility application and designated signatories',
+                'Central Bank of Kuwait (CBK) / CiNet institutional credit bureau disclosure report',
+                'Independent valuation of eligible commercial real estate or industrial collateral'
+              ]
+            : (verd.key_conditions || ['Perfection of registered collateral']),
           underwritingConfidencePct: 99.4,
           extractedFromDocsCount: files.length,
         },

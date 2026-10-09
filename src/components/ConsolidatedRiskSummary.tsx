@@ -24,6 +24,7 @@ import {
   Cell 
 } from 'recharts';
 import { DocumentCompareModal } from './DocumentCompareModal';
+import { CleanFormattedText } from '../utils/cleanText';
 
 interface ConsolidatedRiskSummaryProps {
   business: Business;
@@ -141,9 +142,10 @@ export const ConsolidatedRiskSummary: React.FC<ConsolidatedRiskSummaryProps> = (
           <h4 className="text-sm font-semibold text-white tracking-tight">
             {verdict.title}
           </h4>
-          <p className="text-xs text-slate-300 leading-relaxed font-light">
-            {rationaleText || 'Autonomous cross-document circularization completed across audited financials and Kuwaiti official registries.'}
-          </p>
+          <CleanFormattedText 
+            text={rationaleText || 'Autonomous cross-document circularization completed across audited financials and Kuwaiti official registries.'}
+            className="text-xs text-slate-300 leading-relaxed font-light"
+          />
 
           {/* Key Conditions Precedent Tags */}
           {keyConditions.length > 0 && (
@@ -267,9 +269,10 @@ export const ConsolidatedRiskSummary: React.FC<ConsolidatedRiskSummaryProps> = (
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-200 leading-relaxed font-light whitespace-pre-line">
-                      {sec.content}
-                    </p>
+                    <CleanFormattedText 
+                      text={sec.content}
+                      className="text-xs text-slate-200 leading-relaxed font-light"
+                    />
 
                     {/* Inline citation chips */}
                     {sec.citations && sec.citations.length > 0 && (

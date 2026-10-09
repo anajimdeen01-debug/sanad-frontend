@@ -14,6 +14,7 @@ import {
   Sliders,
   ShieldCheck
 } from 'lucide-react';
+import { CleanFormattedText } from '../utils/cleanText';
 
 interface ChapterAskSanadProps {
   evaluation: EvaluationPayload;
@@ -198,9 +199,10 @@ export const ChapterAskSanad: React.FC<ChapterAskSanadProps> = ({
                   <span className="text-[10px] font-mono text-slate-400">{card.timestamp}</span>
                 </div>
 
-                <p className="text-sm text-slate-200 leading-relaxed font-light">
-                  {card.answer}
-                </p>
+                <CleanFormattedText 
+                  text={card.answer}
+                  className="text-sm text-slate-200 leading-relaxed font-light"
+                />
 
                 {/* Visual Micro-Chart */}
                 {card.visualType === 'purification' && (

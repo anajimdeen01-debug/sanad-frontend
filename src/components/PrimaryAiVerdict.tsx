@@ -9,6 +9,7 @@ import {
   AlertOctagon
 } from 'lucide-react';
 import { Language, translations } from '../i18n/translations';
+import { CleanFormattedText } from '../utils/cleanText';
 
 interface PrimaryAiVerdictProps {
   evaluation: EvaluationPayload;
@@ -131,9 +132,10 @@ export const PrimaryAiVerdict: React.FC<PrimaryAiVerdictProps> = ({
         </div>
 
         {/* AI Synthesis Prose */}
-        <p className="text-sm lg:text-base text-slate-200 leading-relaxed font-light max-w-4xl">
-          {verdictProse}
-        </p>
+        <CleanFormattedText 
+          text={verdictProse}
+          className="text-sm lg:text-base text-slate-200 leading-relaxed font-light max-w-4xl"
+        />
       </div>
 
       {/* Autonomous Document Extraction Matrix */}
